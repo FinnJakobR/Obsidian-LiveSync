@@ -1,0 +1,62 @@
+import LiveSync from "main";
+
+import { App, PluginSettingTab, Setting } from "obsidian";
+
+export class LiveSyncSettingTab extends PluginSettingTab {
+	plugin: LiveSync;
+
+	constructor(app: App, plugin: LiveSync) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		let { containerEl } = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl).setName("Room id").addText((text) =>
+			text
+				.setPlaceholder("cfaed3d3-09b1-4b97-b0dc-2f704101bc96")
+				.setValue(this.plugin.settings.roomId)
+				.onChange(async (value) => {
+					this.plugin.settings.roomId = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+
+		new Setting(containerEl).setName("Server url").addText((t) =>
+			t
+				.setPlaceholder("http://localhost:3000")
+				.setValue(this.plugin.settings.serverUrl)
+				.onChange(async (value) => {
+					this.plugin.settings.serverUrl = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+
+		new Setting(containerEl).setName("Server password").addText((t) =>
+			t
+				.setPlaceholder("Password")
+				.setValue(this.plugin.settings.serverPassword)
+				.onChange(async (value) => {
+					this.plugin.settings.serverPassword = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+
+		new Setting(containerEl).setName("Encryption Token").addText((t) =>
+			t
+				.setPlaceholder("Encryption key")
+				.setValue(this.plugin.settings.encryptionPassphrase)
+				.onChange(async (value) => {
+					this.plugin.settings.encryptionPassphrase = value;
+					await this.plugin.saveSettings();
+				}),
+		);
+
+		new Setting(containerEl)
+			.setName("Please Reload this Plugin to Apply all Changes!")
+			.setHeading();
+	}
+}
