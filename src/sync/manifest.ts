@@ -55,6 +55,7 @@ export class ManifestManager {
 
 		try {
 			await syncManager.waitForSync("__manifest__");
+			console.log("Manifest", this.manifest.toJSON());
 		} catch (e) {
 			console.error(e);
 			return;
@@ -182,6 +183,7 @@ export class ManifestManager {
 			}
 
 			const tempHandle = this.syncManager.getDoc(path);
+			console.log("get Doc from Manifest!");
 			if (!tempHandle) continue;
 
 			try {
@@ -269,12 +271,6 @@ export class ManifestManager {
 	removeFile(path: string): void {
 		if (!this.manifest) return;
 		this.manifest.delete(toCanonicalPath(normalizePath(path)));
-
-		// console.log(
-		// 	"DELETE",
-		// 	toCanonicalPath(normalizePath(path)),
-		// 	this.manifest.has(toCanonicalPath(normalizePath(path))),
-		// );
 	}
 
 	addFolder(rawPath: string): void {

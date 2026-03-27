@@ -74,6 +74,7 @@ export class BackgroundSync {
 
 		try {
 			const docHandle = this.syncManager.getDoc(path);
+			console.log("CALL GET DOC FROM SUBSCRIBE!");
 			if (!docHandle) return;
 
 			try {
@@ -104,7 +105,6 @@ export class BackgroundSync {
 			if (docHandle.text.length > 0 || !file) {
 				const file = getFileByPath(this.vault, diskPath);
 				const remoteContent = docHandle.text.toString();
-				console.log("remote Content!", remoteContent);
 				const localContent = file
 					? normalizeLineEndings(await this.vault.read(file))
 					: " ";
@@ -141,9 +141,10 @@ export class BackgroundSync {
 
 		if (oldActive && oldActive !== path) {
 			const docHandle = this.syncManager.getDoc(oldActive);
+			console.log("CALL GET DOC FROM setActiveFile!");
+
 			if (docHandle) {
 				const content = docHandle.text.toString();
-				console.log("setActiveFile", content);
 				void this.writeToDisk(oldActive, content);
 
 				const file = getFileByPath(this.vault, toLocalPath(oldActive));
@@ -200,6 +201,7 @@ export class BackgroundSync {
 		if (!isTextFile(normNew)) return;
 
 		const docHandle = this.syncManager.getDoc(normNew);
+		console.log("CALL GET DOC FROM onFileRename!");
 
 		if (!docHandle) return;
 
@@ -250,17 +252,13 @@ export class BackgroundSync {
 		const path = toCanonicalPath(normalizePath(rawPath));
 		if (this.recentDiskWrites.has(path)) return;
 
-		console.warn(path, this.activeFile);
 		//if (path === this.activeFile) return;
-		console.warn("active File!");
 
 		const docHandle = this.syncManager.getDoc(path);
+		console.log("CALL GET DOC FROM HANDLE Local Text Modify");
 		if (!docHandle) return;
 
-		console.warn("docHandle!");
-
 		const file = getFileByPath(this.vault, toLocalPath(path));
-		console.warn(file);
 
 		if (!file) return;
 
@@ -310,6 +308,8 @@ export class BackgroundSync {
 		clearTimeout(timer);
 		this.writeTimers.delete(path);
 		const docHandle = this.syncManager.getDoc(path);
+		console.log("Call from flush write!");
+
 		if (docHandle) {
 			void this.writeToDisk(path, docHandle.doc.toString());
 		}

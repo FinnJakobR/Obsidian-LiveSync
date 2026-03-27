@@ -89,12 +89,9 @@ export async function createApp() {
 		const muxMatch = url.pathname.match(/^\/ws-mux\/(.+)$/);
 
 		if (muxMatch) {
-			console.log("MUX!");
-
 			const baseRoomId = muxMatch[1];
 			const auth = authenticateUpgrade(url, baseRoomId);
 			if (!auth.ok) {
-				console.log(auth);
 				rejectUpgrade(socket, auth.code, auth.reason);
 				return;
 			}
@@ -105,10 +102,8 @@ export async function createApp() {
 		}
 
 		const ctrlMatch = url.pathname.match(/^\/control\/(.+)$/);
-		console.log(ctrlMatch);
 
 		if (ctrlMatch) {
-			console.log("controll!");
 			const roomId = ctrlMatch[1];
 			const auth = authenticateUpgrade(url, roomId);
 			if (!auth.ok) {

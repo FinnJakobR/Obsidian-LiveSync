@@ -124,13 +124,6 @@ export function createYjsWSS() {
 		);
 
 		safeSend(client.ws, msg);
-
-		if (peerCount > 0) {
-			const syncRequestMsg = encodeMuxMessage(docId, MUX_SYNC_REQUEST);
-			for (const peer of state.clients) {
-				if (peer !== client) safeSend(peer.ws, syncRequestMsg);
-			}
-		}
 	}
 
 	function handleSync(
@@ -144,8 +137,6 @@ export function createYjsWSS() {
 		const state = rooms.get(roomId);
 		//const db = getDefaultPersistence();
 		if (!state || !state.clients.has(client)) return;
-
-		console.log("Got Payload", payload.length);
 
 		if (payload.length > 0) {
 			const decoder = decoding.createDecoder(payload);
@@ -188,17 +179,40 @@ export function createYjsWSS() {
 		return;
 	}
 
+	function sendFullState(client: MuxClient, docId: string) {
+		const roomId = `${client.baseRoomId}:${docId}`;
+		const state = rooms.get(roomId);
+		if (!state) return;
+
+		const update = Y.encodeStateAsUpdate(state.doc);
+
+		const encoder = encoding.createEncoder();
+		syncProtocol.writeUpdate(encoder, update);
+
+		const msg = encodeMuxMessage(
+			docId,
+			MUX_SYNC,
+			encoding.toUint8Array(encoder),
+		);
+
+		safeSend(client.ws, msg);
+	}
+
 	muxWss.on(
 		"connection",
 		(ws: WebSocket, req: IncomingMessage, baseRoomId: string) => {
 			const reqUrl = new URL(req.url || "", `http://${req.headers.host}`);
 			let userId = reqUrl.searchParams.get("userId");
 
+			console.log(baseRoomId);
+
 			const client: MuxClient = {
 				ws,
 				userId,
 				baseRoomId,
 			};
+
+			//sendFullState(client, "__manifest__");
 
 			console.log("client!");
 

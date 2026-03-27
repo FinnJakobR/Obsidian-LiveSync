@@ -8,9 +8,8 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.workspace.on("active-leaf-change", () => {
-			console.log("active-live-change");
 			const run = () => {
-				plugin.onActiveFileChange();
+				//plugin.onActiveFileChange();
 			};
 
 			if (pendingRename) {
@@ -23,7 +22,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.vault.on("create", (file: TAbstractFile) => {
-			console.log("CREATE!");
 			const originalPath = file.path;
 
 			//trigger das nur wenn es nicht von dir kam!
@@ -100,7 +98,7 @@ export function registerVaultEvents(plugin: LiveSync): void {
 						(activeFile.path === file.path ||
 							activeFile.path === oldPath)
 					) {
-						plugin.onActiveFileChange();
+						//plugin.onActiveFileChange();
 					}
 				});
 
@@ -114,8 +112,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.vault.on("modify", (file: TAbstractFile) => {
-			console.log("modify");
-
 			if (!(file instanceof TFile)) return;
 
 			if (isTextFile(file.path)) {
@@ -137,7 +133,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 					void plugin.drawingSync.handleLocalModify(file.path);
 					return;
 				}
-				console.warn("handleLocalModify");
 				void plugin.backgroundSync.handleLocalTextModify(file.path);
 				return;
 			}

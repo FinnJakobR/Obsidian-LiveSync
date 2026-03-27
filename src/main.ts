@@ -256,9 +256,12 @@ export default class LiveSync extends Plugin {
 
 	private async cleanupStaleFiles() {
 		const manifest = this.manifestManager.getEntries();
-		if (manifest.size === 0) return;
+
+		//if (manifest.size === 0) return;
+
 		const manifestPaths = new Set(manifest.keys());
 		const localFiles = this.app.vault.getFiles();
+		console.log(manifestPaths, localFiles);
 		for (const file of localFiles) {
 			if (!manifestPaths.has(toCanonicalPath(normalizePath(file.path)))) {
 				this.fileOpsManager.mutePathEvents(file.path);
@@ -297,8 +300,6 @@ export default class LiveSync extends Plugin {
 		await this.connectSync();
 		await this.manifestManager.connect(this.syncManager);
 		await this.cleanupStaleFiles();
-
-		console.log("mainfest synced!");
 
 		const syncedCount = await this.manifestManager.syncFromManifest(
 			this.mutePathEvents,

@@ -96,6 +96,8 @@ export class SyncManager {
 		const filePath = normalizePath(rawPath);
 		const existingDoc = this.docs.get(filePath);
 
+		console.log("get Doc", rawPath);
+
 		if (existingDoc) {
 			return {
 				doc: existingDoc,
@@ -113,21 +115,13 @@ export class SyncManager {
 			const syncEncoder = encoding.createEncoder();
 			syncProtocol.writeUpdate(syncEncoder, update);
 
-			console.log(
-				this.docs.get("__manifest__")?.toJSON(),
-				origin,
-				this.docs.get("__manifest__")?.get("files").toJSON(),
-				this.docs
-					.get("__manifest__")
-					?.getMap("files")
-					.has("Delete Me.md"),
-			);
-
 			this.sendMux(
 				filePath,
 				MUX_SYNC,
 				encoding.toUint8Array(syncEncoder),
 			);
+
+			console.log("UPDATE");
 		};
 
 		doc.on("update", updateHandler);
@@ -159,7 +153,6 @@ export class SyncManager {
 	}
 
 	waitForSync(rawPath: string, timeoutMs = 10_000): Promise<void> {
-		console.log("TRY TO SYNC");
 		const filePath = normalizePath(rawPath);
 		if (this.synced.get(filePath)) return Promise.resolve();
 
@@ -173,7 +166,6 @@ export class SyncManager {
 			if (!listeners) {
 				listeners = new Set();
 
-				console.warn(filePath);
 				this.syncListeners.set(filePath, listeners);
 			}
 
@@ -185,10 +177,7 @@ export class SyncManager {
 			};
 			listeners.add(listener);
 
-			console.log("this.synced", this.synced);
-
 			if (this.synced.get(filePath)) {
-				console.warn("SYNC1");
 				listeners.delete(listener);
 				clearTimeout(timer);
 				resolve();
@@ -265,6 +254,8 @@ export class SyncManager {
 	private handleMessage(data: Uint8Array): void {
 		const { docId, msgType, payload } = decodeMuxMessage(data);
 
+		console.log("GOT MESSAGE!");
+
 		switch (msgType) {
 			case MUX_SUBSCRIBED:
 				this.handleSubscribed(docId, payload);
@@ -291,7 +282,7 @@ export class SyncManager {
 		const syncEncoder = encoding.createEncoder();
 		syncProtocol.writeSyncStep1(syncEncoder, doc);
 
-		if (docId == "__manifest__") console.error("SYNC MANIFEST SUBSCRIBE");
+		console.log("SUBSCRIBE", docId);
 
 		this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
 
@@ -313,8 +304,6 @@ export class SyncManager {
 
 		const syncEncoder = encoding.createEncoder();
 		syncProtocol.writeSyncStep1(syncEncoder, doc);
-		if (docId == "__manifest__")
-			console.error("SYNC MANIFEST", doc.toJSON());
 
 		this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
 	}
@@ -330,9 +319,6 @@ export class SyncManager {
 		syncProtocol.readSyncMessage(decoder, syncEncoder, doc, this);
 
 		if (encoding.length(syncEncoder) > 0) {
-			if (docId == "__manifest__")
-				console.error("SYNC MANIFEST", Y.decodeStateVector(payload));
-
 			this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
 		}
 
@@ -367,7 +353,6 @@ export class SyncManager {
 
 		if (value && !prev) {
 			const listeners = this.syncListeners.get(docId);
-			console.log("SYNC_LISTINER ACTIVATED!", docId);
 			if (listeners) {
 				for (const listener of Array.from(listeners)) {
 					listener(true);

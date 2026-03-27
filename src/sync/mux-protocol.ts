@@ -29,8 +29,6 @@ export function decodeMuxMessage(data: Uint8Array): {
 
 	const docId = decoding.readVarString(decoder);
 
-	console.log(docId);
-
 	const msgType = decoding.readVarUint(decoder);
 	const payload = decoding.hasContent(decoder)
 		? decoding.readVarUint8Array(decoder)
