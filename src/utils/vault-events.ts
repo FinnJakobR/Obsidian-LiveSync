@@ -134,7 +134,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 					return;
 				}
 				void plugin.backgroundSync.handleLocalTextModify(file.path);
-				return;
 			}
 
 			void plugin.fileOpsManager.onFileModify(file);

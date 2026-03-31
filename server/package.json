@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node ./build/server.js"
+    "start": "tsc && node --env-file=.env ./build/server.js "
   },
   "keywords": [],
   "author": "",

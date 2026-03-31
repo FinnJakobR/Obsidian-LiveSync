@@ -21,5 +21,10 @@ data.json
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
+server/.env
+server/rooms.json
+
+server/backup
+
 server/build
 server/data

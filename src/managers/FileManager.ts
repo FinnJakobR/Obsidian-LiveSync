@@ -165,8 +165,6 @@ export default class FileOpsManager {
 		if (!(file instanceof TFile)) return;
 		const binary = !isTextFile(file.path);
 
-		if (!binary) return;
-
 		const wirePath = toCanonicalPath(localPath);
 		const tFile = file;
 
@@ -176,17 +174,31 @@ export default class FileOpsManager {
 			if (!this.sendOp) return;
 
 			try {
-				const binaryContent = await this.vault.readBinary(tFile);
-				const content = arrayBufferToBase64(binaryContent);
-				if (content.length > CHUNK_SIZE) {
-					this.sendChunked(wirePath, content, true);
+				if (binary) {
+					const binaryContent = await this.vault.readBinary(tFile);
+					const content = arrayBufferToBase64(binaryContent);
+					if (content.length > CHUNK_SIZE) {
+						this.sendChunked(wirePath, content, true);
+					} else {
+						this.emitOp({
+							type: "modify",
+							path: wirePath,
+							content,
+							binary: true,
+						});
+					}
 				} else {
-					this.emitOp({
-						type: "modify",
-						path: wirePath,
-						content,
-						binary: true,
-					});
+					const content = await this.vault.read(tFile);
+					if (content.length > CHUNK_SIZE) {
+						this.sendChunked(wirePath, content, false);
+					} else {
+						this.emitOp({
+							type: "modify",
+							path: wirePath,
+							content,
+							binary: false,
+						});
+					}
 				}
 			} catch {
 				new Notice(`Live Share: failed to sync ${localPath}`);

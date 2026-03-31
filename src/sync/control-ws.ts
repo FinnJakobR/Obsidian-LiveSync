@@ -43,7 +43,7 @@ export class ControlChannel {
 	private reconnectAttempts = 0;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-	constructor(settings: LiveShareSettings, e2e?: E2ECrypto, app: App) {
+	constructor(settings: LiveShareSettings, app: App, e2e?: E2ECrypto) {
 		this.settings = settings;
 		this.e2e = e2e ?? null;
 		this.app = app;

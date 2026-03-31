@@ -99,7 +99,6 @@ export const DEFAULT_SETTINGS: LiveShareSettings = {
 	debugLogging: false,
 	debugLogPath: "live-share-debug.md",
 	autoReconnect: true,
-	approvalTimeoutSeconds: 60,
 };
 
 export interface ChunkStartMessage {

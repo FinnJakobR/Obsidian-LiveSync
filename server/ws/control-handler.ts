@@ -1,6 +1,17 @@
 import { IncomingMessage } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import * as fs from "fs";
+import {
+	createFileFromEvent,
+	deleteFileFromEvent,
+	FileCreateOperation,
+	FileDeleteOperation,
+	FileModifyOperation,
+	FileRenameOperation,
+	FolderCreateOperation,
+	modifyFileFromEvent,
+	renameFileFromEvent,
+} from "../util/fs";
 
 const ALLOWED_TYPES = new Set([
 	"file-op",
@@ -243,6 +254,60 @@ export function createControlWSS() {
 							: msg.path;
 
 					if (typeof filePath === "string") {
+						const op = msg.op;
+
+						switch (op.type) {
+							case "create": {
+								const create_operation =
+									op as FileCreateOperation;
+								createFileFromEvent(
+									create_operation,
+									roomId,
+									false,
+								);
+								break;
+							}
+
+							case "delete": {
+								const delete_operation =
+									op as FileDeleteOperation;
+								deleteFileFromEvent(delete_operation, roomId);
+								break;
+							}
+
+							case "rename": {
+								const rename_operation =
+									op as FileRenameOperation;
+								renameFileFromEvent(rename_operation, roomId);
+								break;
+							}
+
+							case "folder-create": {
+								const createFolder_operation =
+									op as FolderCreateOperation;
+
+								createFileFromEvent(
+									createFolder_operation,
+									roomId,
+									true,
+								);
+
+								break;
+							}
+
+							case "modify":
+								{
+									const modify_operation =
+										op as FileModifyOperation;
+
+									modifyFileFromEvent(
+										modify_operation,
+										roomId,
+									);
+								}
+
+								break;
+						}
 					}
 				}
 

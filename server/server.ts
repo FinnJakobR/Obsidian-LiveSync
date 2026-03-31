@@ -2,18 +2,32 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { string } from "lib0";
-import { safeTokenCompare } from "./util/util";
+import { getRoomIds, safeTokenCompare } from "./util/util";
 import { error } from "node:console";
 import { createYjsWSS, initRooms } from "./ws/handler";
 import { createServer } from "node:http";
 import { createControlWSS } from "./ws/control-handler";
+import { createRoom, roomExists } from "./util/fs";
 
 const SERVER_PASSWORD = process.env.SERVER_PASSWORD || "";
+const ROOM_JSON = process.env.ROOMS || "";
+
+console.log(process.env);
 
 export async function createApp() {
 	const corsOrigin = process.env.CORS_ORIGIN || "*";
 	const app = express();
 	const server = createServer(app);
+
+	const ids = getRoomIds(ROOM_JSON);
+
+	console.log(ids);
+
+	for (const room_id of ids) {
+		if (!roomExists(room_id)) {
+			createRoom(room_id);
+		}
+	}
 
 	await initRooms();
 
@@ -63,14 +77,15 @@ export async function createApp() {
 			url: URL,
 			roomId: string,
 		): { ok: true } | { ok: false; code: number; reason: string } {
-			const room =
-				process.env.ROOM_ID || "d9e835e8-4c15-4375-9605-cac6481818f6";
-			if (!room || !safeTokenCompare(roomId, room))
+			const foundId = ids.find((id) => safeTokenCompare(roomId, id));
+
+			if (!roomId || !foundId) {
 				return {
 					ok: false,
 					code: 403,
 					reason: "Invalid room or token",
 				};
+			}
 
 			return { ok: true };
 		}
@@ -124,4 +139,4 @@ export async function createApp() {
 	});
 }
 
-createApp();
+void createApp();

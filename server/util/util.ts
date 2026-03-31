@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
+import { existsSync, readFileSync, readSync } from "node:fs";
 
 const COMPARE_KEY = "live-share-token-compare";
 
@@ -49,3 +50,15 @@ export function decodeMuxMessage(data: Uint8Array): {
 		: new Uint8Array(0);
 	return { docId, msgType, payload };
 }
+
+interface JSON {
+	[index: string]: unknown;
+}
+
+export function getRoomIds(path: string): string[] {
+	if (!existsSync(path)) throw Error("Could not found Room ID file: " + path);
+	const rooms = JSON.parse(readFileSync(path, { encoding: "utf-8" })) as JSON;
+	return Object.keys(rooms);
+}
+
+export function getOrCreateRoomDirectories() {}

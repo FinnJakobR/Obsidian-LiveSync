@@ -87,10 +87,6 @@ export function getOrCreateRoom(roomId: string): RoomState {
 }
 
 export function createYjsWSS() {
-	const globalRoomId =
-		process.env.ROOM_ID ||
-		("d9e835e8-4c15-4375-9605-cac6481818f6" as string);
-
 	const muxWss = new WebSocketServer({
 		noServer: true,
 		maxPayload: Infinity,
@@ -105,10 +101,6 @@ export function createYjsWSS() {
 	}
 
 	function handleSubscribe(client: MuxClient, docId: string) {
-		if (client.baseRoomId !== globalRoomId) {
-			return;
-		} //TODO add Error Message!;
-
 		const roomId = `${client.baseRoomId}:${docId}`;
 		const state = getOrCreateRoom(roomId);
 		const peerCount = state.clients.size;
@@ -211,8 +203,6 @@ export function createYjsWSS() {
 				userId,
 				baseRoomId,
 			};
-
-			//sendFullState(client, "__manifest__");
 
 			console.log("client!");
 

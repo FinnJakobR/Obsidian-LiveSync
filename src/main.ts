@@ -228,7 +228,7 @@ export default class LiveSync extends Plugin {
 		}
 
 		this.syncManager.setE2E(e2e ?? null);
-		this.controlChannel = new ControlChannel(this.settings, e2e, this.app);
+		this.controlChannel = new ControlChannel(this.settings, this.app, e2e);
 
 		this.controlChannel.onError((context, err) => {
 			new Notice(`Control-ws ${context} error`);
