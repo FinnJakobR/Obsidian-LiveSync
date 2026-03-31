@@ -1,6 +1,6 @@
 import LiveSync from "main";
 
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, SecretComponent } from "obsidian";
 
 export class LiveSyncSettingTab extends PluginSettingTab {
 	plugin: LiveSync;
@@ -15,7 +15,7 @@ export class LiveSyncSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName("Room id").addText((text) =>
+		new Setting(containerEl).setName("Room").addText((text) =>
 			text
 				.setPlaceholder("cfaed3d3-09b1-4b97-b0dc-2f704101bc96")
 				.setValue(this.plugin.settings.roomId)
@@ -25,7 +25,7 @@ export class LiveSyncSettingTab extends PluginSettingTab {
 				}),
 		);
 
-		new Setting(containerEl).setName("Server url").addText((t) =>
+		new Setting(containerEl).setName("Server").addText((t) =>
 			t
 				.setPlaceholder("http://localhost:3000")
 				.setValue(this.plugin.settings.serverUrl)
@@ -35,28 +35,32 @@ export class LiveSyncSettingTab extends PluginSettingTab {
 				}),
 		);
 
-		new Setting(containerEl).setName("Server password").addText((t) =>
-			t
-				.setPlaceholder("Password")
-				.setValue(this.plugin.settings.serverPassword)
-				.onChange(async (value) => {
-					this.plugin.settings.serverPassword = value;
-					await this.plugin.saveSettings();
-				}),
-		);
-
-		new Setting(containerEl).setName("Encryption Token").addText((t) =>
-			t
-				.setPlaceholder("Encryption key")
-				.setValue(this.plugin.settings.encryptionPassphrase)
-				.onChange(async (value) => {
-					this.plugin.settings.encryptionPassphrase = value;
-					await this.plugin.saveSettings();
-				}),
-		);
+		new Setting(containerEl)
+			.setName("Password")
+			.setDesc("Server Password")
+			.addComponent((el) =>
+				new SecretComponent(this.app, el)
+					.setValue(this.plugin.settings.serverPassword)
+					.onChange(async (value) => {
+						this.plugin.settings.serverPassword = value;
+						await this.plugin.saveSettings();
+					}),
+			);
 
 		new Setting(containerEl)
-			.setName("Please Reload this Plugin to Apply all Changes!")
+			.setName("Encryption-token")
+			.setDesc("Encryption key used for end-to-end encryption")
+			.addComponent((el) =>
+				new SecretComponent(this.app, el)
+					.setValue(this.plugin.settings.encryptionPassphrase)
+					.onChange(async (value) => {
+						this.plugin.settings.encryptionPassphrase = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName("Please reload this plugin to apply all changes!")
 			.setHeading();
 	}
 }

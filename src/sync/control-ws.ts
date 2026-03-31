@@ -1,11 +1,13 @@
 import {
+	CONNECTION_STATES,
 	ControlMessage,
 	ControlMessageMap,
 	ControlMessageType,
 	LiveShareSettings,
 } from "types";
 import { E2ECrypto } from "./crypto";
-import { toWsUrl } from "utils/utils";
+import { CHECK_FOR_PING_DELAY, getSetting, toWsUrl } from "utils/utils";
+import { App } from "obsidian";
 
 export type { ControlMessage, ControlMessageType };
 
@@ -26,15 +28,8 @@ export class ControlChannel {
 	private settings: LiveShareSettings;
 	private isDestroyed = false;
 	private e2e: E2ECrypto | null = null;
-	private stateChangeCallback:
-		| ((
-				state:
-					| "connected"
-					| "reconnecting"
-					| "disconnected"
-					| "auth-required",
-		  ) => void)
-		| null = null;
+	private stateChangeCallback: ((state: CONNECTION_STATES) => void) | null =
+		null;
 	private everConnected = false;
 	private errorCallback: ((context: string, err: unknown) => void) | null =
 		null;
@@ -42,25 +37,19 @@ export class ControlChannel {
 	private latencyMs = 0;
 	private pingTimer: ReturnType<typeof setInterval> | null = null;
 	private lastPingTime = 0;
+	private app: App;
 
 	private shouldConnect = false;
 	private reconnectAttempts = 0;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-	constructor(settings: LiveShareSettings, e2e?: E2ECrypto) {
+	constructor(settings: LiveShareSettings, e2e?: E2ECrypto, app: App) {
 		this.settings = settings;
 		this.e2e = e2e ?? null;
+		this.app = app;
 	}
 
-	onStateChange(
-		callback: (
-			state:
-				| "connected"
-				| "reconnecting"
-				| "disconnected"
-				| "auth-required",
-		) => void,
-	) {
+	onStateChange(callback: (state: CONNECTION_STATES) => void) {
 		this.stateChangeCallback = callback;
 	}
 
@@ -82,12 +71,25 @@ export class ControlChannel {
 
 	private openWebSocket(): void {
 		if (this.isDestroyed || !this.shouldConnect) return;
-		const wsUrl = toWsUrl(this.settings.serverUrl);
-		let url = `${wsUrl}/control/${this.settings.roomId}?token=${encodeURIComponent(this.settings.token)}`;
-		if (this.settings.jwt)
-			url += `&jwt=${encodeURIComponent(this.settings.jwt)}`;
-		if (this.settings.serverPassword)
-			url += `&password=${encodeURIComponent(this.settings.serverPassword)}`;
+		const serverUrl = getSetting(
+			"serverUrl",
+			this.settings,
+			this.app,
+		) as string;
+		const roomId = getSetting("roomId", this.settings, this.app) as string;
+		const token = getSetting("token", this.settings, this.app) as string;
+		const jwt = getSetting("jwt", this.settings, this.app) as string;
+		const serverPassword = getSetting(
+			"serverPassword",
+			this.settings,
+			this.app,
+		) as string;
+
+		const wsUrl = toWsUrl(serverUrl);
+		let url = `${wsUrl}/control/${roomId}?token=${encodeURIComponent(token)}`;
+		if (jwt) url += `&jwt=${encodeURIComponent(jwt)}`;
+		if (serverPassword)
+			url += `&password=${encodeURIComponent(serverPassword)}`;
 
 		this.ws = new WebSocket(url);
 
@@ -217,19 +219,23 @@ export class ControlChannel {
 		this.handlers.clear();
 	}
 
+	sendPing(): void {
+		if (this.ws?.readyState == WebSocket.OPEN) {
+			this.lastPingTime = Date.now();
+			this.ws.send(
+				JSON.stringify({
+					type: "ping",
+					timestamp: this.lastPingTime,
+				}),
+			);
+		}
+	}
+
 	private startPing(): void {
 		this.stopPing();
 		this.pingTimer = setInterval(() => {
-			if (this.ws?.readyState === WebSocket.OPEN) {
-				this.lastPingTime = Date.now();
-				this.ws.send(
-					JSON.stringify({
-						type: "ping",
-						timestamp: this.lastPingTime,
-					}),
-				);
-			}
-		}, 30_000);
+			this.sendPing();
+		}, CHECK_FOR_PING_DELAY);
 	}
 
 	private stopPing(): void {

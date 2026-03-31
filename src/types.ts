@@ -85,7 +85,6 @@ export interface LiveShareSettings {
 	debugLogging: boolean;
 	debugLogPath: string;
 	autoReconnect: boolean;
-	approvalTimeoutSeconds: number;
 }
 
 export const DEFAULT_SETTINGS: LiveShareSettings = {
@@ -169,3 +168,9 @@ export interface ControlMessageMap {
 	ping: PingMessage;
 	pong: PongMessage;
 }
+
+export type CONNECTION_STATES =
+	| "connected"
+	| "reconnecting"
+	| "disconnected"
+	| "auth-required";

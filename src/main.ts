@@ -10,9 +10,11 @@ import { E2ECrypto } from "sync/crypto";
 import { ExcalidrawSync } from "sync/excalidraw-sync";
 import { ManifestManager } from "sync/manifest";
 import { SyncManager } from "sync/sync";
-import { DEFAULT_SETTINGS, LiveShareSettings } from "types";
+import { CONNECTION_STATES, DEFAULT_SETTINGS, LiveShareSettings } from "types";
 import {
+	CHECK_FOR_PING_DELAY,
 	ensureFolder,
+	getSetting,
 	isTextFile,
 	toCanonicalPath,
 	toLocalPath,
@@ -35,6 +37,8 @@ export default class LiveSync extends Plugin {
 	canvasSync: CanvasSync | null = null;
 	connectionState!: ConnectionStateManager;
 	drawingSync: ExcalidrawSync | null = null;
+	latencyBar: HTMLElement | null = null;
+	currentConnectionState: CONNECTION_STATES = "disconnected";
 
 	private requestBinaryFile = (path: string) => {
 		this.controlChannel?.send({ type: "sync-request", path });
@@ -156,6 +160,18 @@ export default class LiveSync extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.latencyBar = this.addStatusBarItem();
+		this.latencyBar.setText("DISCONNECT");
+
+		this.updateLatency();
+
+		this.registerInterval(
+			window.setInterval(
+				() => this.updateLatency(),
+				CHECK_FOR_PING_DELAY,
+			),
+		);
+
 		this.addSettingTab(new LiveSyncSettingTab(this.app, this));
 
 		if (!this.settings.clientId) {
@@ -163,7 +179,7 @@ export default class LiveSync extends Plugin {
 			await this.saveData(this.settings);
 		}
 
-		this.syncManager = new SyncManager(this.settings);
+		this.syncManager = new SyncManager(this.settings, this.app);
 		this.fileOpsManager = new FileOpsManager(
 			this.app.vault,
 			this.app.fileManager,
@@ -185,7 +201,8 @@ export default class LiveSync extends Plugin {
 		registerVaultEvents(this);
 
 		this.app.workspace.onLayoutReady(async () => {
-			void this.join();
+			await this.join();
+			this.controlChannel?.sendPing();
 		});
 	}
 
@@ -200,13 +217,18 @@ export default class LiveSync extends Plugin {
 	private async connectSync() {
 		this.syncManager.connect();
 		let e2e: E2ECrypto | undefined;
-		if (this.settings.encryptionPassphrase) {
+		const encryptionPassphrase = getSetting(
+			"encryptionPassphrase",
+			this.settings,
+			this.app,
+		);
+		if (encryptionPassphrase) {
 			e2e = new E2ECrypto(this.settings.encryptionPassphrase);
 			await e2e.init();
 		}
 
 		this.syncManager.setE2E(e2e ?? null);
-		this.controlChannel = new ControlChannel(this.settings, e2e);
+		this.controlChannel = new ControlChannel(this.settings, e2e, this.app);
 
 		this.controlChannel.onError((context, err) => {
 			new Notice(`Control-ws ${context} error`);
@@ -223,10 +245,16 @@ export default class LiveSync extends Plugin {
 			} else if (controlState === "reconnecting") {
 				this.connectionState.transition({ type: "reconnecting" });
 				this.fileOpsManager.setOnline(false);
+
+				this.latencyBar!.setText("RECONNECTING");
 			} else {
 				this.fileOpsManager.setOnline(false);
 				this.connectionState.transition({ type: "disconnect" });
+				this.latencyBar!.setText("DISCONNECT");
 			}
+			this.currentConnectionState = controlState;
+
+			this.updateLatency();
 		});
 		registerControlHandlers(this);
 		this.controlChannel.connect();
@@ -339,5 +367,21 @@ export default class LiveSync extends Plugin {
 		await this.saveData(this.settings);
 		this.syncManager.updateSettings(this.settings);
 		this.manifestManager.updateSettings(this.settings);
+	}
+
+	private updateLatency() {
+		let currentLatency = this.controlChannel?.getLatency() ?? 0;
+
+		switch (this.currentConnectionState) {
+			case "connected":
+				this.latencyBar!.setText("Ping: " + currentLatency + " ms");
+				break;
+
+			default:
+				this.latencyBar!.setText(
+					this.currentConnectionState.toUpperCase(),
+				);
+				break;
+		}
 	}
 }

@@ -5,6 +5,7 @@ import * as Y from "yjs";
 import { typeListForEach } from "yjs/dist/src/internals";
 import { E2ECrypto } from "./crypto";
 import {
+	getSetting,
 	MAX_RECONNECT_ATTEMPTS,
 	RECONNECT_BASE_MS,
 	SERVER_URL,
@@ -21,7 +22,7 @@ import {
 	MUX_SYNC_REQUEST,
 	MUX_UNSUBSCRIBE,
 } from "./mux-protocol";
-import { normalizePath } from "obsidian";
+import { App, normalizePath } from "obsidian";
 
 export interface DocHandle {
 	doc: Y.Doc;
@@ -48,9 +49,11 @@ export class SyncManager {
 	private sendQueue: Promise<void> = Promise.resolve();
 	private isDestroyed = false;
 	private settings: LiveShareSettings;
+	private app: App;
 
-	constructor(settings: LiveShareSettings) {
+	constructor(settings: LiveShareSettings, app: App) {
 		this.settings = settings;
+		this.app = app;
 	}
 
 	setE2E(e2e: E2ECrypto | null): void {
@@ -187,15 +190,36 @@ export class SyncManager {
 
 	private openWebsocket() {
 		if (this.isDestroyed) return;
-		const wsUrl = toWsUrl(this.settings.serverUrl);
-		const params = new URLSearchParams({ token: this.settings.token });
-		if (this.settings.jwt) params.set("jwt", this.settings.jwt);
-		if (this.settings.serverPassword)
-			params.set("password", this.settings.serverPassword);
-		const userId = this.settings.clientId;
-		if (userId) params.set("userId", userId);
 
-		const url = `${wsUrl}/ws-mux/${this.settings.roomId}?${params.toString()}`;
+		const serverUrl = getSetting(
+			"serverUrl",
+			this.settings,
+			this.app,
+		) as string;
+
+		const token = getSetting("token", this.settings, this.app) as string;
+		const jwt = getSetting("jwt", this.settings, this.app) as string;
+		const clientId = getSetting(
+			"clientId",
+			this.settings,
+			this.app,
+		) as string;
+		const serverPassword = getSetting(
+			"serverPassword",
+			this.settings,
+			this.app,
+		) as string;
+
+		const roomId = getSetting("roomId", this.settings, this.app) as string;
+
+		const wsUrl = toWsUrl(serverUrl);
+
+		const params = new URLSearchParams({ token: token });
+		if (jwt) params.set("jwt", jwt);
+		if (serverPassword) params.set("password", serverPassword);
+		if (clientId) params.set("userId", clientId);
+
+		const url = `${wsUrl}/ws-mux/${roomId}?${params.toString()}`;
 		const ws = new WebSocket(url);
 		ws.binaryType = "arraybuffer";
 		this.ws = ws;

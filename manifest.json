@@ -2,7 +2,7 @@
 	"id": "live-sync",
 	"name": "Live Sync",
 	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
+	"minAppVersion": "1.11.4",
 	"description": "A Live Sync Client",
 	"author": "Finn Reinhardt",
 	"authorUrl": "https://obsidian.md",

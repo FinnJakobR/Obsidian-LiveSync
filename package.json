@@ -25,7 +25,7 @@
 	},
 	"dependencies": {
 		"lib0": "^0.2.117",
-		"obsidian": "latest",
+		"obsidian": "github:obsidianmd/obsidian-api#master",
 		"y-protocols": "^1.0.7",
 		"yjs": "^13.6.30"
 	}

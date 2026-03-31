@@ -1,4 +1,5 @@
-import { Platform, TFile, TFolder, Vault } from "obsidian";
+import { App, Platform, TFile, TFolder, Vault } from "obsidian";
+import { DEFAULT_SETTINGS, LiveShareSettings } from "types";
 
 export const CHUNK_SIZE = 512 * 1024; //512 kb
 export const VAULT_EVENT_SETTLE_MS = 250;
@@ -6,6 +7,7 @@ export const MAX_RECONNECT_ATTEMPTS = 15;
 export const RECONNECT_BASE_MS = 100;
 export const DEBOUNCE_MS = 250;
 export const STALE_TRANSFER_MS = 5 * 60 * 1000;
+export const CHECK_FOR_PING_DELAY = 500;
 
 export const SYNC_STEP2 = 1;
 
@@ -20,6 +22,8 @@ const WIN_CHAR_MAP: [string, string][] = [
 	["|", "\uFF5C"],
 	[":", "\uFF1A"],
 ];
+
+const ENCRYPTED_SETTINGS = ["encryptionPassphrase", "serverPassword"];
 
 const ASCII_TO_FULLWIDTH = new Map(WIN_CHAR_MAP.map(([a, f]) => [a, f]));
 const FULLWIDTH_TO_ASCII = new Map(WIN_CHAR_MAP.map(([a, f]) => [f, a]));
@@ -197,4 +201,30 @@ export function applyMinimalYTextUpdate(
 		if (newSuffix > prefix)
 			text.insert(prefix, newContent.slice(prefix, newSuffix));
 	});
+}
+
+export function getSetting(
+	key: keyof LiveShareSettings,
+	data: LiveShareSettings,
+	app: App,
+): string | boolean {
+	if (!Object.keys(data).includes(key)) {
+		console.error("Unknown Settings Key! ", key);
+		return "";
+	}
+
+	if (!ENCRYPTED_SETTINGS.includes(key)) return data[key];
+
+	const id = data[key];
+
+	if (typeof id !== "string") {
+		console.error("Unknown Settings Key! ", key);
+		return "";
+	}
+
+	const secret = app.secretStorage.getSecret(id);
+
+	if (secret) return secret;
+
+	return DEFAULT_SETTINGS[key];
 }
