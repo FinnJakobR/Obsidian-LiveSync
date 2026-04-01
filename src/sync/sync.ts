@@ -258,6 +258,7 @@ export class SyncManager {
 		if (this.reconnectTimer) return;
 
 		if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+			console.log("HÄ");
 			this.shouldConnect = false;
 			return;
 		}
@@ -270,6 +271,7 @@ export class SyncManager {
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
 			if (this.shouldConnect) {
+				console.log("try to Open MUX Websocket!");
 				this.openWebsocket();
 			}
 		}, delay);
@@ -314,11 +316,6 @@ export class SyncManager {
 		if (payload.length > 0) {
 			const decoder = decoding.createDecoder(payload);
 			peerCount = decoding.readVarUint(decoder);
-		}
-
-		//TODO
-		if (peerCount === 0) {
-			this.setSynced(docId, true);
 		}
 	}
 

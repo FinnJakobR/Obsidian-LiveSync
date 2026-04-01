@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, LiveShareSettings } from "types";
 
 export const CHUNK_SIZE = 512 * 1024; //512 kb
 export const VAULT_EVENT_SETTLE_MS = 250;
-export const MAX_RECONNECT_ATTEMPTS = 15;
+export const MAX_RECONNECT_ATTEMPTS = 1000000;
 export const RECONNECT_BASE_MS = 100;
 export const DEBOUNCE_MS = 250;
 export const STALE_TRANSFER_MS = 5 * 60 * 1000;

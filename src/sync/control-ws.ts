@@ -6,7 +6,12 @@ import {
 	LiveShareSettings,
 } from "types";
 import { E2ECrypto } from "./crypto";
-import { CHECK_FOR_PING_DELAY, getSetting, toWsUrl } from "utils/utils";
+import {
+	CHECK_FOR_PING_DELAY,
+	getSetting,
+	MAX_RECONNECT_ATTEMPTS,
+	toWsUrl,
+} from "utils/utils";
 import { App } from "obsidian";
 
 export type { ControlMessage, ControlMessageType };
@@ -17,7 +22,6 @@ type Handler<T extends ControlMessageType = ControlMessageType> = (
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
-const MAX_RECONNECT_ATTEMPTS = 10;
 
 export class ControlChannel {
 	private ws: WebSocket | null = null;

@@ -18,5 +18,7 @@ export async function getRoom(roomId: string): Promise<Y.Doc> {
 
 export async function allreadySavedRooms() {
 	const db = getDefaultPersistence();
-	return await db.getAllDocNames();
+	const allreadySaved = await db.getAllDocNames();
+	console.log("allready", allreadySaved);
+	return allreadySaved;
 }

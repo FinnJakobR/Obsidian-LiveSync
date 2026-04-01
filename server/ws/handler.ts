@@ -51,12 +51,19 @@ export async function initRooms() {
 	const roomsNames: string[] = await db.getAllDocNames();
 
 	for (const key of roomsNames) {
-		const doc = await db.getYDoc(key);
+		const doc = (await db.getYDoc(key)) as Y.Doc;
+
+		doc.on("update", async (update) => {
+			console.log("UPDATE EVENT FIRED", update.length);
+			await db.storeUpdate(key, update);
+		});
 
 		const newState: RoomState = {
 			clients: new Set(),
 			doc: doc,
 		};
+
+		console.log("readSync!", key, doc.getMap("files").toJSON());
 
 		rooms.set(key, newState);
 	}
@@ -65,7 +72,6 @@ export async function initRooms() {
 export function getOrCreateRoom(roomId: string): RoomState {
 	const existing = rooms.get(roomId);
 	if (existing) {
-		console.log("exsited!", roomId);
 		return existing;
 	}
 
@@ -73,9 +79,9 @@ export function getOrCreateRoom(roomId: string): RoomState {
 	const db = getDefaultPersistence();
 	db.storeUpdate(roomId, Y.encodeStateAsUpdate(d));
 
-	d.on("update", (update) => {
+	d.on("update", async (update) => {
 		console.log("UPDATE EVENT FIRED", update.length);
-		db.storeUpdate(roomId, update);
+		await db.storeUpdate(roomId, update);
 	});
 
 	const state: RoomState = {
@@ -127,7 +133,7 @@ export function createYjsWSS() {
 		encrypted = false,
 	) {
 		const roomId = `${client.baseRoomId}:${docId}`;
-		console.log(roomId);
+		const db = getDefaultPersistence();
 		const state = getOrCreateRoom(roomId);
 
 		if (!state || !state.clients.has(client)) return;
@@ -136,12 +142,22 @@ export function createYjsWSS() {
 			const decoder = decoding.createDecoder(payload);
 			const encoder = encoding.createEncoder();
 
+			console.log(
+				"readSync!",
+				roomId,
+				state.doc.getMap("files").toJSON(),
+			);
+
 			const msgType = syncProtocol.readSyncMessage(
 				decoder,
 				encoder,
 				state.doc,
 				null,
 			);
+
+			console.log("got", msgType);
+
+			//db.storeUpdate(roomId, Y.encodeStateAsUpdate(state.doc));
 
 			const msgPeerType = encrypted ? MUX_SYNC_ENCRYPTED : MUX_SYNC;
 			const msg = encodeMuxMessage(docId, msgPeerType, payload);
@@ -150,7 +166,7 @@ export function createYjsWSS() {
 			}
 
 			if (msgType == SYNC_UPDATE || msgType == SYNC_STEP2) {
-				Y.logUpdate(Y.encodeStateAsUpdate(state.doc));
+				//Y.logUpdate(Y.encodeStateAsUpdate(state.doc));
 				return;
 			}
 
@@ -196,8 +212,6 @@ export function createYjsWSS() {
 		(ws: WebSocket, req: IncomingMessage, baseRoomId: string) => {
 			const reqUrl = new URL(req.url || "", `http://${req.headers.host}`);
 			let userId = reqUrl.searchParams.get("userId");
-
-			console.log(baseRoomId);
 
 			const client: MuxClient = {
 				ws,

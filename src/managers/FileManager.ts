@@ -63,7 +63,7 @@ export default class FileOpsManager {
 		const wasOffline = !this.isOnline;
 		this.isOnline = online;
 		if (online && wasOffline && this.sendOp) {
-			console.log("drain offline Queue!");
+			console.log("drain offline Queue!", this.offlineQueue.size);
 			const ops = this.offlineQueue.drain();
 			for (const op of ops) {
 				this.sendOp(op);
