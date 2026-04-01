@@ -9,8 +9,12 @@ import {
 	writeFileSync,
 } from "fs";
 import path, { basename, join, sep } from "path";
+import { exitWithReason } from "./util";
 
-const BASE_PATH = "backup";
+const BASE_PATH =
+	process.env.BACKUP_BASE_PATH ||
+	exitWithReason("Could not found Backup Base Path in env");
+
 const TRASH_PATH = ".trash";
 
 export function createRoom(id: string): void {

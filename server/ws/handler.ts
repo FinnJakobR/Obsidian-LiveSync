@@ -65,6 +65,7 @@ export async function initRooms() {
 export function getOrCreateRoom(roomId: string): RoomState {
 	const existing = rooms.get(roomId);
 	if (existing) {
+		console.log("exsited!", roomId);
 		return existing;
 	}
 
@@ -73,6 +74,7 @@ export function getOrCreateRoom(roomId: string): RoomState {
 	db.storeUpdate(roomId, Y.encodeStateAsUpdate(d));
 
 	d.on("update", (update) => {
+		console.log("UPDATE EVENT FIRED", update.length);
 		db.storeUpdate(roomId, update);
 	});
 
@@ -125,9 +127,9 @@ export function createYjsWSS() {
 		encrypted = false,
 	) {
 		const roomId = `${client.baseRoomId}:${docId}`;
-		//console.log(roomId);
-		const state = rooms.get(roomId);
-		//const db = getDefaultPersistence();
+		console.log(roomId);
+		const state = getOrCreateRoom(roomId);
+
 		if (!state || !state.clients.has(client)) return;
 
 		if (payload.length > 0) {
@@ -148,8 +150,7 @@ export function createYjsWSS() {
 			}
 
 			if (msgType == SYNC_UPDATE || msgType == SYNC_STEP2) {
-				console.log("UPDATE");
-
+				Y.logUpdate(Y.encodeStateAsUpdate(state.doc));
 				return;
 			}
 

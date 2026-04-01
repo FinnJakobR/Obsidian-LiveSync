@@ -2,17 +2,17 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { string } from "lib0";
-import { getRoomIds, safeTokenCompare } from "./util/util";
+import { exitWithReason, getRoomIds, safeTokenCompare } from "./util/util";
 import { error } from "node:console";
 import { createYjsWSS, initRooms } from "./ws/handler";
 import { createServer } from "node:http";
 import { createControlWSS } from "./ws/control-handler";
 import { createRoom, roomExists } from "./util/fs";
+import { exit } from "node:process";
 
 const SERVER_PASSWORD = process.env.SERVER_PASSWORD || "";
-const ROOM_JSON = process.env.ROOMS || "";
-
-console.log(process.env);
+const ROOM_JSON =
+	process.env.ROOMS || exitWithReason("Could not found a Room id in .env");
 
 export async function createApp() {
 	const corsOrigin = process.env.CORS_ORIGIN || "*";

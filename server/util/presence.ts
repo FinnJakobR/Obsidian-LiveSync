@@ -12,8 +12,8 @@ export function getDefaultPersistence(): any {
 }
 
 export async function getRoom(roomId: string): Promise<Y.Doc> {
-	getDefaultPersistence();
-	return (await defaultPersistence.getYDoc(roomId)) as unknown as Y.Doc;
+	const db = getDefaultPersistence();
+	return (await db.getYDoc(roomId)) as Y.Doc;
 }
 
 export async function allreadySavedRooms() {

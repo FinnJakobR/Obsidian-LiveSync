@@ -334,6 +334,7 @@ export class SyncManager {
 
 	private handleSync(docId: string, payload: Uint8Array): void {
 		const doc = this.docs.get(docId);
+		console.log("DOC before", doc?.toJSON(), docId);
 		if (!doc) return;
 
 		const decoder = decoding.createDecoder(payload);

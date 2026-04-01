@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import { existsSync, readFileSync, readSync } from "node:fs";
+import { exit } from "node:process";
 
 const COMPARE_KEY = "live-share-token-compare";
 
@@ -61,4 +62,9 @@ export function getRoomIds(path: string): string[] {
 	return Object.keys(rooms);
 }
 
-export function getOrCreateRoomDirectories() {}
+export function exitWithReason(reason: string): string {
+	console.error(reason);
+	exit(1);
+
+	return "";
+}

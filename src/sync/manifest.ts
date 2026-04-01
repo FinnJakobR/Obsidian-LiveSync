@@ -53,9 +53,10 @@ export class ManifestManager {
 
 		this.manifest = this.docHandle.doc.getMap("files");
 
+		console.log("Manifest", this.manifest.toJSON());
+
 		try {
 			await syncManager.waitForSync("__manifest__");
-			console.log("Manifest", this.manifest.toJSON());
 		} catch (e) {
 			console.error(e);
 			return;
