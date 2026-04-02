@@ -100,7 +100,8 @@ export function createFileFromEvent(
 			writeFileSync(path.join(currentPath, fileName), content, {});
 		}
 	} else {
-		mkdirSync(path.join(currentPath, fileName));
+		if (!existsSync(path.join(currentPath, fileName)))
+			mkdirSync(path.join(currentPath, fileName));
 	}
 }
 
