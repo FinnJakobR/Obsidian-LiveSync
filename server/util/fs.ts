@@ -1,4 +1,5 @@
 import {
+	createWriteStream,
 	Dir,
 	existsSync,
 	fstatSync,
@@ -7,6 +8,7 @@ import {
 	readdirSync,
 	renameSync,
 	writeFileSync,
+	WriteStream,
 } from "fs";
 import path, { basename, join, sep } from "path";
 import { exitWithReason } from "./util";
@@ -67,6 +69,110 @@ export interface FileModifyOperation {
 	path: string;
 	content: string;
 	binary?: boolean;
+}
+
+export interface FileChunkStartOperation {
+	type: "file-chunk-start";
+	path: string;
+	totalSize: number;
+	binary?: boolean;
+	transferId?: string;
+}
+
+export interface FileChunkDataOperation {
+	type: "file-chunk-data";
+	path: string;
+	index: number;
+	data: string;
+	transferId?: string;
+}
+
+export interface FileChunkEndOperation {
+	type: "file-chunk-end";
+	path: string;
+	transferId?: string;
+}
+
+export interface Chunk {
+	path: string;
+	stream: WriteStream;
+	lastWrittenIndex: number;
+	indexQueue: FileChunkDataOperation[];
+}
+
+const ChunkMap: Map<string, Chunk> = new Map();
+
+export function chunkEndWritingFromEvent(
+	op: FileChunkEndOperation,
+	id: string,
+) {
+	const chunk = ChunkMap.get(op.path);
+	if (!chunk) return;
+	chunk.stream.close();
+	ChunkMap.delete(op.path);
+}
+
+export function chunkDataWritingFromEvent(
+	op: FileChunkDataOperation,
+	id: string,
+) {
+	const chunk = ChunkMap.get(op.path ?? "");
+	if (!chunk) return;
+
+	const index = op.index;
+	const nextIndex = chunk.lastWrittenIndex + 1;
+
+	if (index > nextIndex) {
+		// zu früh → puffern
+		chunk.indexQueue.push(op);
+		chunk.indexQueue.sort((a, b) => a.index - b.index);
+		return;
+	}
+
+	if (index === nextIndex) {
+		const b1 = Buffer.from(op.data, "base64");
+		chunk.stream.write(b1);
+		chunk.lastWrittenIndex = index;
+
+		while (chunk.indexQueue.length > 0) {
+			const next = chunk.indexQueue[0];
+
+			if (next.index === chunk.lastWrittenIndex + 1) {
+				chunk.indexQueue.shift();
+				const b2 = Buffer.from(next.data, "base64");
+				chunk.stream.write(b2);
+				chunk.lastWrittenIndex = next.index;
+			} else {
+				break;
+			}
+		}
+	}
+}
+
+export function startChunkWritingFromEvent(
+	op: FileChunkStartOperation,
+	id: string,
+) {
+	if (!op.transferId) return;
+
+	createFileFromEvent(
+		{
+			type: "create",
+			path: op.path,
+			content: "",
+			binary: true,
+		},
+		id,
+		false,
+	);
+
+	const stream = createWriteStream(path.join(BASE_PATH, id, op.path));
+	ChunkMap.set(op.path, {
+		path: op.path,
+		stream: stream,
+		lastWrittenIndex: -1,
+		indexQueue: [],
+	});
 }
 
 export function createFileFromEvent(

@@ -98,7 +98,7 @@ export function registerVaultEvents(plugin: LiveSync): void {
 						(activeFile.path === file.path ||
 							activeFile.path === oldPath)
 					) {
-						//plugin.onActiveFileChange();
+						plugin.onActiveFileChange();
 					}
 				});
 

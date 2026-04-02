@@ -47,9 +47,6 @@ export function registerControlHandlers(plugin: LiveSync): void {
 			"newPath" in op ? op.newPath : null,
 		].filter(Boolean) as string[];
 		if (paths.length === 0) return;
-		const isRename = op.type === "rename";
-
-		console.log(op);
 
 		plugin.fileOpsManager
 			.applyRemoteOp(op)

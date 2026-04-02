@@ -2,8 +2,13 @@ import { IncomingMessage } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import * as fs from "fs";
 import {
+	chunkDataWritingFromEvent,
+	chunkEndWritingFromEvent,
 	createFileFromEvent,
 	deleteFileFromEvent,
+	FileChunkDataOperation,
+	FileChunkEndOperation,
+	FileChunkStartOperation,
 	FileCreateOperation,
 	FileDeleteOperation,
 	FileModifyOperation,
@@ -11,6 +16,7 @@ import {
 	FolderCreateOperation,
 	modifyFileFromEvent,
 	renameFileFromEvent,
+	startChunkWritingFromEvent,
 } from "../util/fs";
 
 const ALLOWED_TYPES = new Set([
@@ -256,7 +262,8 @@ export function createControlWSS() {
 					if (typeof filePath === "string") {
 						const op = msg.op;
 
-						switch (op.type) {
+						const type = op ? op.type : msg.type;
+						switch (type) {
 							case "create": {
 								const create_operation =
 									op as FileCreateOperation;
@@ -285,7 +292,6 @@ export function createControlWSS() {
 							case "folder-create": {
 								const createFolder_operation =
 									op as FolderCreateOperation;
-
 								createFileFromEvent(
 									createFolder_operation,
 									roomId,
@@ -295,17 +301,44 @@ export function createControlWSS() {
 								break;
 							}
 
-							case "modify":
-								{
-									const modify_operation =
-										op as FileModifyOperation;
+							case "modify": {
+								const modify_operation =
+									op as FileModifyOperation;
+								modifyFileFromEvent(modify_operation, roomId);
+								break;
+							}
 
-									modifyFileFromEvent(
-										modify_operation,
-										roomId,
-									);
-								}
+							case "file-chunk-start": {
+								const chunkStart_operation =
+									msg as FileChunkStartOperation;
+								startChunkWritingFromEvent(
+									chunkStart_operation,
+									roomId,
+								);
+								break;
+							}
 
+							case "file-chunk-data": {
+								const chunkData_operation =
+									msg as FileChunkDataOperation;
+								chunkDataWritingFromEvent(
+									chunkData_operation,
+									roomId,
+								);
+								break;
+							}
+
+							case "file-chunk-end": {
+								const chunkEnd_operation =
+									msg as FileChunkEndOperation;
+								chunkEndWritingFromEvent(
+									chunkEnd_operation,
+									roomId,
+								);
+								break;
+							}
+
+							case "file-chunk-resume":
 								break;
 						}
 					}
