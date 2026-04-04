@@ -274,6 +274,7 @@ export class ManifestManager {
 	removeFile(path: string): void {
 		if (!this.manifest) return;
 		this.manifest.delete(toCanonicalPath(normalizePath(path)));
+		this.syncManager?.sendDelete(toCanonicalPath(normalizePath(path)));
 	}
 
 	addFolder(rawPath: string): void {

@@ -7,6 +7,7 @@ export const MUX_UNSUBSCRIBE = 3;
 export const MUX_SUBSCRIBED = 4;
 export const MUX_SYNC_REQUEST = 6;
 export const MUX_SYNC_ENCRYPTED = 7;
+export const MUX_DELETE = 8;
 
 export function encodeMuxMessage(
 	docId: string,

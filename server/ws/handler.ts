@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import {
 	decodeMuxMessage,
 	encodeMuxMessage,
+	MUX_DELETE,
 	MUX_SUBSCRIBED,
 	MUX_SYNC,
 	MUX_SYNC_ENCRYPTED,
@@ -268,23 +269,12 @@ export function createYjsWSS() {
 		return;
 	}
 
-	function sendFullState(client: MuxClient, docId: string) {
+	function handleDeletion(client: MuxClient, docId: string) {
 		const roomId = `${client.baseRoomId}:${docId}`;
-		const state = rooms.get(roomId);
-		if (!state) return;
-
-		const update = Y.encodeStateAsUpdate(state.doc);
-
-		const encoder = encoding.createEncoder();
-		syncProtocol.writeUpdate(encoder, update);
-
-		const msg = encodeMuxMessage(
-			docId,
-			MUX_SYNC,
-			encoding.toUint8Array(encoder),
-		);
-
-		safeSend(client.ws, msg);
+		console.log("delete", roomId);
+		rooms.delete(roomId);
+		const db = getDefaultPersistence();
+		void db.clearDocument(roomId);
 	}
 
 	muxWss.on(
@@ -328,6 +318,10 @@ export function createYjsWSS() {
 							break;
 						case MUX_SYNC_ENCRYPTED:
 							handleSync(client, docId, payload, true);
+							break;
+
+						case MUX_DELETE:
+							handleDeletion(client, docId);
 							break;
 					}
 				} catch (err) {

@@ -61,7 +61,7 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.vault.on("delete", (file: TAbstractFile) => {
-			console.log("DELETE!");
+			console.error("DELETE!");
 			const run = () => {
 				if (plugin.fileOpsManager.isPathMuted(file.path)) return;
 				plugin.fileOpsManager.onFileDelete(file);
@@ -102,15 +102,15 @@ export function registerVaultEvents(plugin: LiveSync): void {
 						file.path,
 						plugin.syncManager,
 					);
-					const activeFile = plugin.app.workspace.getActiveFile()!;
-
-					if (
-						activeFile &&
-						(activeFile.path === file.path ||
-							activeFile.path === oldPath)
-					) {
-						plugin.onActiveFileChange();
-					}
+					//const activeFile = plugin.app.workspace.getActiveFile()!;
+					// if (
+					// 	activeFile &&
+					// 	(activeFile.path === file.path ||
+					// 		activeFile.path === oldPath)
+					// ) {
+					// 	console.error("Active File", activeFile);
+					// 	plugin.onActiveFileChange();
+					// }
 				});
 
 				pendingRename = task.finally(() => {

@@ -171,6 +171,7 @@ export class BackgroundSync {
 			unobserve();
 			this.observers.delete(path);
 		}
+
 		this.syncManager.releaseDoc(path);
 	}
 

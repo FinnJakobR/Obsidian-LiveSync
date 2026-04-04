@@ -16,6 +16,7 @@ import { LiveShareSettings } from "types";
 import {
 	decodeMuxMessage,
 	encodeMuxMessage,
+	MUX_DELETE,
 	MUX_SUBSCRIBED,
 	MUX_SYNC,
 	MUX_SYNC_ENCRYPTED,
@@ -442,5 +443,9 @@ export class SyncManager {
 
 	private sendUnsubscribe(filePath: string): void {
 		this.sendMux(filePath, MUX_UNSUBSCRIBE);
+	}
+
+	sendDelete(filePath: string): void {
+		this.sendMux(filePath, MUX_DELETE);
 	}
 }
