@@ -24,7 +24,10 @@ export function registerVaultEvents(plugin: LiveSync): void {
 		plugin.app.vault.on("create", (file: TAbstractFile) => {
 			const originalPath = file.path;
 
+			console.log("CREATE!", file);
+
 			//trigger das nur wenn es nicht von dir kam!
+			if (plugin.fileOpsManager.isPathMuted(originalPath)) return;
 
 			void plugin.fileOpsManager.onFileCreate(file);
 
@@ -60,7 +63,8 @@ export function registerVaultEvents(plugin: LiveSync): void {
 		plugin.app.vault.on("delete", (file: TAbstractFile) => {
 			console.log("DELETE!");
 			const run = () => {
-				void plugin.fileOpsManager.onFileDelete(file);
+				if (plugin.fileOpsManager.isPathMuted(file.path)) return;
+				plugin.fileOpsManager.onFileDelete(file);
 				plugin.backgroundSync.onFileRemoved(file.path);
 				plugin.manifestManager.removeFile(file.path);
 			};
@@ -76,6 +80,13 @@ export function registerVaultEvents(plugin: LiveSync): void {
 		plugin.app.vault.on(
 			"rename",
 			(file: TAbstractFile, oldPath: string) => {
+				console.log("RENAME");
+
+				if (
+					plugin.fileOpsManager.isPathMuted(file.path) ||
+					plugin.fileOpsManager.isPathMuted(oldPath)
+				)
+					return;
 				renamePaths.add(oldPath);
 
 				const prev = pendingRename ?? Promise.resolve();
@@ -112,7 +123,10 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.vault.on("modify", (file: TAbstractFile) => {
+			console.log("MODIFY");
 			if (!(file instanceof TFile)) return;
+
+			if (plugin.fileOpsManager.isPathMuted(file.path)) return;
 
 			if (isTextFile(file.path)) {
 				if (plugin.backgroundSync.isRecentDiskWrite(file.path)) return;

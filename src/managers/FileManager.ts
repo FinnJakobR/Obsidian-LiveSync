@@ -95,6 +95,10 @@ export default class FileOpsManager {
 		}
 	}
 
+	isPathMuted(path: string): boolean {
+		return (this.mutedPaths.get(normalizePath(path)) ?? 0) > 0;
+	}
+
 	setSender(sender: (op: FileOp) => void) {
 		this.sendOp = sender;
 	}
@@ -357,6 +361,7 @@ export default class FileOpsManager {
 			switch (op.type) {
 				case "create": {
 					const exists = this.vault.getAbstractFileByPath(op.path);
+					console.log("exists", exists);
 					if (exists && exists instanceof TFile) {
 						if (op.binary) {
 							const binaryContent = base64ToArrayBuffer(
@@ -582,8 +587,9 @@ export default class FileOpsManager {
 					break;
 				}
 			}
-		} catch {
+		} catch (e) {
 			const opPath = "path" in op ? op.path : "unknown";
+			console.log(e);
 			new Notice(`Live Share: failed to apply ${op.type} for ${opPath}`);
 		} finally {
 			setTimeout(() => {

@@ -326,8 +326,13 @@ export default class LiveSync extends Plugin {
 
 	public async join() {
 		await this.connectSync();
-		await this.manifestManager.connect(this.syncManager);
-		await this.cleanupStaleFiles();
+		const successfulConnected = await this.manifestManager.connect(
+			this.syncManager,
+		);
+
+		console.log(this.manifestManager.getEntries());
+
+		if (successfulConnected) await this.cleanupStaleFiles();
 
 		const syncedCount = await this.manifestManager.syncFromManifest(
 			this.mutePathEvents,

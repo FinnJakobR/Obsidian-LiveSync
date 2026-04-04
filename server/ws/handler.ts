@@ -49,21 +49,68 @@ const rooms = new Map<string, RoomState>();
 export async function initRooms() {
 	const db = getDefaultPersistence();
 	const roomsNames: string[] = await db.getAllDocNames();
+	console.log("roomNames", roomsNames);
 
 	for (const key of roomsNames) {
-		const doc = (await db.getYDoc(key)) as Y.Doc;
+		let doc = await (db.getYDoc(key) as Promise<Y.Doc>);
+		console.log("DOC!", doc);
 
-		doc.on("update", async (update) => {
-			console.log("UPDATE EVENT FIRED", update.length);
-			await db.storeUpdate(key, update);
+		doc.on("update", async (Update, Origin, Doc, Transaction) => {
+			//console.log("INIT UPDATE!", Update.length, Update);
+
+			console.log(Y.logUpdate(Update));
+
+			await db.storeUpdate(key, Update);
+
+			//
+			Transaction.changed.forEach((ChangeSet, Container) => {
+				console.log(ChangeSet);
+				if (
+					Container instanceof Y.Map ||
+					(Container._map instanceof Map && Container._map.size > 0)
+				) {
+					console.log("- Y.Map:");
+					ChangeSet.forEach((Value, Key) => {
+						console.log("  -", Key, "=", Value);
+					});
+					return;
+				}
+
+				if (
+					Container instanceof Y.Array ||
+					(Container._start != null &&
+						"arr" in Container._start.content)
+				) {
+					console.log("- Y.Array:", Transaction);
+					return;
+				}
+
+				if (
+					Container instanceof Y.Text ||
+					(Container._start != null &&
+						"str" in Container._start.content)
+				) {
+					console.log("- Y.Text:", Transaction);
+					return;
+				}
+
+				if (
+					Container instanceof Y.XmlFragment ||
+					(Container._start != null &&
+						"type" in Container._start.content)
+				) {
+					console.log("- Y.XmlFragment:", Transaction);
+					return;
+				}
+
+				console.log("Transaction", Transaction);
+			});
 		});
 
 		const newState: RoomState = {
 			clients: new Set(),
 			doc: doc,
 		};
-
-		console.log("readSync!", key, doc.getMap("files").toJSON());
 
 		rooms.set(key, newState);
 	}
@@ -79,9 +126,48 @@ export function getOrCreateRoom(roomId: string): RoomState {
 	const db = getDefaultPersistence();
 	db.storeUpdate(roomId, Y.encodeStateAsUpdate(d));
 
-	d.on("update", async (update) => {
-		console.log("UPDATE EVENT FIRED", update.length);
-		await db.storeUpdate(roomId, update);
+	d.on("update", async (Update, Origin, Doc, Transaction) => {
+		await db.storeUpdate(roomId, Update);
+
+		console.log("new transaction for", roomId);
+		Transaction.changed.forEach((ChangeSet, Container) => {
+			if (
+				Container instanceof Y.Map ||
+				(Container._map instanceof Map && Container._map.size > 0)
+			) {
+				console.log("- Y.Map:");
+				ChangeSet.forEach((Value, Key) => {
+					console.log("  -", Key, "=", Value);
+				});
+				return;
+			}
+
+			if (
+				Container instanceof Y.Array ||
+				(Container._start != null && "arr" in Container._start.content)
+			) {
+				console.log("- Y.Array:", Transaction);
+				return;
+			}
+
+			if (
+				Container instanceof Y.Text ||
+				(Container._start != null && "str" in Container._start.content)
+			) {
+				console.log("- Y.Text:", Transaction);
+				return;
+			}
+
+			if (
+				Container instanceof Y.XmlFragment ||
+				(Container._start != null && "type" in Container._start.content)
+			) {
+				console.log("- Y.XmlFragment:", Transaction);
+				return;
+			}
+
+			console.log("Transaction", Transaction);
+		});
 	});
 
 	const state: RoomState = {
@@ -133,7 +219,6 @@ export function createYjsWSS() {
 		encrypted = false,
 	) {
 		const roomId = `${client.baseRoomId}:${docId}`;
-		const db = getDefaultPersistence();
 		const state = getOrCreateRoom(roomId);
 
 		if (!state || !state.clients.has(client)) return;
@@ -142,11 +227,13 @@ export function createYjsWSS() {
 			const decoder = decoding.createDecoder(payload);
 			const encoder = encoding.createEncoder();
 
-			console.log(
-				"readSync!",
-				roomId,
-				state.doc.getMap("files").toJSON(),
-			);
+			// console.log(
+			// 	"before!",
+			// 	roomId,
+			// 	state.doc.getMap("files").toJSON(),
+			// 	state.doc.getText("content").toDelta(),
+			// 	state.doc.getText("content").toString(),
+			// );
 
 			const msgType = syncProtocol.readSyncMessage(
 				decoder,
@@ -155,19 +242,12 @@ export function createYjsWSS() {
 				null,
 			);
 
-			console.log("got", msgType);
-
 			//db.storeUpdate(roomId, Y.encodeStateAsUpdate(state.doc));
 
 			const msgPeerType = encrypted ? MUX_SYNC_ENCRYPTED : MUX_SYNC;
 			const msg = encodeMuxMessage(docId, msgPeerType, payload);
 			for (const peer of state.clients) {
 				if (peer !== client) safeSend(peer.ws, msg);
-			}
-
-			if (msgType == SYNC_UPDATE || msgType == SYNC_STEP2) {
-				//Y.logUpdate(Y.encodeStateAsUpdate(state.doc));
-				return;
 			}
 
 			if (encoding.length(encoder) > 0) {
@@ -219,7 +299,7 @@ export function createYjsWSS() {
 				baseRoomId,
 			};
 
-			console.log("client!");
+			console.log("client! CONNECTED");
 
 			ws.on("error", (err) => {
 				console.error(

@@ -46,10 +46,10 @@ export class ManifestManager {
 		this.settings = settings;
 	}
 
-	async connect(syncManager: SyncManager): Promise<void> {
+	async connect(syncManager: SyncManager): Promise<number> {
 		this.syncManager = syncManager;
 		this.docHandle = syncManager.getDoc("__manifest__");
-		if (!this.docHandle) return;
+		if (!this.docHandle) return 0;
 
 		this.manifest = this.docHandle.doc.getMap("files");
 
@@ -59,8 +59,10 @@ export class ManifestManager {
 			await syncManager.waitForSync("__manifest__");
 		} catch (e) {
 			console.error(e);
-			return;
+			return 0;
 		}
+
+		return 1;
 	}
 
 	async publishManifest(options?: { purge?: boolean }): Promise<void> {

@@ -124,7 +124,12 @@ export class SyncManager {
 				encoding.toUint8Array(syncEncoder),
 			);
 
-			console.log("UPDATE");
+			console.log(
+				"UPDATE",
+				update.length,
+				doc.getText("content").toDelta(),
+				origin,
+			);
 		};
 
 		doc.on("update", updateHandler);
@@ -390,6 +395,7 @@ export class SyncManager {
 	): void {
 		if (!this.e2e?.enabled || !payload || payload.length === 0) {
 			if (this.ws?.readyState === WebSocket.OPEN) {
+				console.log("SEND_MUX");
 				this.ws.send(encodeMuxMessage(docId, msgType, payload));
 			}
 			return;
