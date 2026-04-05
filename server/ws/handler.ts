@@ -22,6 +22,8 @@ import {
 
 import * as syncProtocol from "y-protocols/sync";
 import { func } from "lib0";
+import Logger, { LogLevel } from "../util/logger";
+import { error } from "node:console";
 
 const SYNC_STEP2 = 1;
 const SYNC_UPDATE = 2;
@@ -46,66 +48,33 @@ interface RoomState {
 }
 
 const rooms = new Map<string, RoomState>();
+const logger = new Logger();
 
 export async function initRooms() {
 	const db = getDefaultPersistence();
 	const roomsNames: string[] = await db.getAllDocNames();
-	console.log("roomNames", roomsNames);
+
+	//console.log("roomNames", roomsNames);
 
 	for (const key of roomsNames) {
 		let doc = await (db.getYDoc(key) as Promise<Y.Doc>);
-		console.log("DOC!", doc);
 
-		doc.on("update", async (Update, Origin, Doc, Transaction) => {
-			//console.log("INIT UPDATE!", Update.length, Update);
+		logger.log({
+			level: LogLevel.INFO,
+			causing: "update",
+			date: new Date(),
+			message: `Found Room Name: ${key}`,
+		});
 
-			console.log(Y.logUpdate(Update));
+		doc.on("update", async (Update) => {
+			logger.log({
+				level: LogLevel.DEBUG,
+				causing: "update",
+				date: new Date(),
+				message: `Update ${key} - New Content: ${doc.get("content").toString()}`,
+			});
 
 			await db.storeUpdate(key, Update);
-
-			//
-			Transaction.changed.forEach((ChangeSet, Container) => {
-				console.log(ChangeSet);
-				if (
-					Container instanceof Y.Map ||
-					(Container._map instanceof Map && Container._map.size > 0)
-				) {
-					console.log("- Y.Map:");
-					ChangeSet.forEach((Value, Key) => {
-						console.log("  -", Key, "=", Value);
-					});
-					return;
-				}
-
-				if (
-					Container instanceof Y.Array ||
-					(Container._start != null &&
-						"arr" in Container._start.content)
-				) {
-					console.log("- Y.Array:", Transaction);
-					return;
-				}
-
-				if (
-					Container instanceof Y.Text ||
-					(Container._start != null &&
-						"str" in Container._start.content)
-				) {
-					console.log("- Y.Text:", Transaction);
-					return;
-				}
-
-				if (
-					Container instanceof Y.XmlFragment ||
-					(Container._start != null &&
-						"type" in Container._start.content)
-				) {
-					console.log("- Y.XmlFragment:", Transaction);
-					return;
-				}
-
-				console.log("Transaction", Transaction);
-			});
 		});
 
 		const newState: RoomState = {
@@ -120,55 +89,36 @@ export async function initRooms() {
 export function getOrCreateRoom(roomId: string): RoomState {
 	const existing = rooms.get(roomId);
 	if (existing) {
+		logger.log({
+			level: LogLevel.INFO,
+			causing: "update",
+			date: new Date(),
+			message: `Found Room ${roomId}`,
+		});
+
 		return existing;
 	}
+
+	logger.log({
+		level: LogLevel.INFO,
+		causing: "update",
+		date: new Date(),
+		message: `Create Room ${roomId}`,
+	});
 
 	const d = new Y.Doc();
 	const db = getDefaultPersistence();
 	db.storeUpdate(roomId, Y.encodeStateAsUpdate(d));
 
-	d.on("update", async (Update, Origin, Doc, Transaction) => {
-		await db.storeUpdate(roomId, Update);
-
-		console.log("new transaction for", roomId);
-		Transaction.changed.forEach((ChangeSet, Container) => {
-			if (
-				Container instanceof Y.Map ||
-				(Container._map instanceof Map && Container._map.size > 0)
-			) {
-				console.log("- Y.Map:");
-				ChangeSet.forEach((Value, Key) => {
-					console.log("  -", Key, "=", Value);
-				});
-				return;
-			}
-
-			if (
-				Container instanceof Y.Array ||
-				(Container._start != null && "arr" in Container._start.content)
-			) {
-				console.log("- Y.Array:", Transaction);
-				return;
-			}
-
-			if (
-				Container instanceof Y.Text ||
-				(Container._start != null && "str" in Container._start.content)
-			) {
-				console.log("- Y.Text:", Transaction);
-				return;
-			}
-
-			if (
-				Container instanceof Y.XmlFragment ||
-				(Container._start != null && "type" in Container._start.content)
-			) {
-				console.log("- Y.XmlFragment:", Transaction);
-				return;
-			}
-
-			console.log("Transaction", Transaction);
+	d.on("update", async (Update) => {
+		logger.log({
+			level: LogLevel.DEBUG,
+			causing: "update",
+			date: new Date(),
+			message: `Update ${roomId} - New Content: ${d.get("content").toString()}`,
 		});
+
+		await db.storeUpdate(roomId, Update);
 	});
 
 	const state: RoomState = {
@@ -197,6 +147,13 @@ export function createYjsWSS() {
 
 	function handleSubscribe(client: MuxClient, docId: string) {
 		const roomId = `${client.baseRoomId}:${docId}`;
+
+		logger.log({
+			level: LogLevel.DEBUG,
+			message: `got SUBSCRIBE Message from Client ${client.userId} to room ${roomId} `,
+			date: new Date(),
+			causing: "websocket",
+		});
 		const state = getOrCreateRoom(roomId);
 		const peerCount = state.clients.size;
 
@@ -210,6 +167,13 @@ export function createYjsWSS() {
 			encoding.toUint8Array(peerCountEncoder),
 		);
 
+		logger.log({
+			level: LogLevel.DEBUG,
+			message: `send SUBSCRIBE Message from Client ${client.userId} to room ${roomId} `,
+			date: new Date(),
+			causing: "websocket",
+		});
+
 		safeSend(client.ws, msg);
 	}
 
@@ -222,19 +186,25 @@ export function createYjsWSS() {
 		const roomId = `${client.baseRoomId}:${docId}`;
 		const state = getOrCreateRoom(roomId);
 
+		logger.log({
+			level: LogLevel.DEBUG,
+			message: `got SYNC Message from Client ${client.userId} to room ${roomId} with Payload length: ${payload.length}`,
+			date: new Date(),
+			causing: "websocket",
+		});
+
 		if (!state || !state.clients.has(client)) return;
 
 		if (payload.length > 0) {
 			const decoder = decoding.createDecoder(payload);
 			const encoder = encoding.createEncoder();
 
-			// console.log(
-			// 	"before!",
-			// 	roomId,
-			// 	state.doc.getMap("files").toJSON(),
-			// 	state.doc.getText("content").toDelta(),
-			// 	state.doc.getText("content").toString(),
-			// );
+			logger.log({
+				level: LogLevel.INFO,
+				message: `Room before SYNC [files: ${JSON.stringify(state.doc.getMap("files").toJSON())} | Delta Content: ${state.doc.getText("content").toDelta()}] from Client ${client.userId} to room ${roomId} `,
+				date: new Date(),
+				causing: "sync",
+			});
 
 			const msgType = syncProtocol.readSyncMessage(
 				decoder,
@@ -242,6 +212,13 @@ export function createYjsWSS() {
 				state.doc,
 				null,
 			);
+
+			logger.log({
+				level: LogLevel.INFO,
+				message: `Room after SYNC [files: ${JSON.stringify(state.doc.getMap("files").toJSON())} | Delta Content: ${state.doc.getText("content").toDelta()}] from Client ${client.userId} to room ${roomId} `,
+				date: new Date(),
+				causing: "sync",
+			});
 
 			//db.storeUpdate(roomId, Y.encodeStateAsUpdate(state.doc));
 
@@ -266,12 +243,25 @@ export function createYjsWSS() {
 		const roomId = `${client.baseRoomId}:${docId}`;
 		const room = getOrCreateRoom(roomId);
 		room.clients.delete(client);
+
+		logger.log({
+			level: LogLevel.WARNING,
+			message: `Unsubsribe for Room: ${roomId} from ${client.userId}`,
+			date: new Date(),
+			causing: "unsubscribe",
+		});
+
 		return;
 	}
 
 	function handleDeletion(client: MuxClient, docId: string) {
 		const roomId = `${client.baseRoomId}:${docId}`;
-		console.log("delete", roomId);
+		logger.log({
+			level: LogLevel.WARNING,
+			message: `Delete-request from ${client.userId} for Room: ${roomId}`,
+			date: new Date(),
+			causing: "delete",
+		});
 		rooms.delete(roomId);
 		const db = getDefaultPersistence();
 		void db.clearDocument(roomId);
@@ -289,13 +279,21 @@ export function createYjsWSS() {
 				baseRoomId,
 			};
 
-			console.log("client! CONNECTED");
+			logger.log({
+				level: LogLevel.DEBUG,
+				message: `Client ${userId} connected from MUX to ${baseRoomId}`,
+				date: new Date(),
+				causing: "websocket",
+			});
 
 			ws.on("error", (err) => {
-				console.error(
-					`[yjs-mux] ws error for room ${baseRoomId}:`,
-					err.message,
-				);
+				logger.log({
+					level: LogLevel.ERROR,
+					message: `Client ${userId} got an error for room ${baseRoomId}: ${err.message}`,
+					date: new Date(),
+					causing: "websocket",
+				});
+
 				ws.close();
 			});
 
@@ -325,7 +323,13 @@ export function createYjsWSS() {
 							break;
 					}
 				} catch (err) {
-					console.error("[yjs-mux] failed to handle message:", err);
+					logger.log({
+						level: LogLevel.ERROR,
+						message: `Client ${userId} failed to handle message: ${err as string}`,
+						date: new Date(),
+						causing: "websocket",
+					});
+					//console.error("[yjs-mux] failed to handle message:", err);
 				}
 			});
 		},
