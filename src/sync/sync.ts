@@ -10,6 +10,7 @@ import {
 	RECONNECT_BASE_MS,
 	SERVER_URL,
 	SYNC_STEP2,
+	SYNC_UPDATE,
 	toWsUrl,
 } from "utils/utils";
 import { LiveShareSettings } from "types";
@@ -287,7 +288,7 @@ export class SyncManager {
 	private handleMessage(data: Uint8Array): void {
 		const { docId, msgType, payload } = decodeMuxMessage(data);
 
-		console.log("GOT MESSAGE!");
+		console.log("GOT MESSAGE!", msgType);
 
 		switch (msgType) {
 			case MUX_SUBSCRIBED:
@@ -347,12 +348,13 @@ export class SyncManager {
 
 		syncProtocol.readSyncMessage(decoder, syncEncoder, doc, this);
 
-		if (encoding.length(syncEncoder) > 0) {
-			this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
+		if (msgType === SYNC_STEP2 || msgType == SYNC_UPDATE) {
+			this.setSynced(docId, true);
+			return;
 		}
 
-		if (msgType === SYNC_STEP2) {
-			this.setSynced(docId, true);
+		if (encoding.length(syncEncoder) > 0) {
+			this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
 		}
 	}
 

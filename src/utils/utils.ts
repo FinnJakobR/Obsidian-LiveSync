@@ -10,6 +10,7 @@ export const STALE_TRANSFER_MS = 5 * 60 * 1000;
 export const CHECK_FOR_PING_DELAY = 500;
 
 export const SYNC_STEP2 = 1;
+export const SYNC_UPDATE = 2;
 
 export const SERVER_URL = "http://localhost:3000";
 
