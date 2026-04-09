@@ -279,8 +279,30 @@ export class BackgroundSync {
 
 	destroy(): void {
 		this.running = false;
-		for (const timer of this.writeTimers.values()) {
+		// Flush all pending debounced writes before clearing
+		for (const [path, timer] of this.writeTimers) {
 			clearTimeout(timer);
+			const docHandle = this.syncManager.getDoc(path);
+			if (docHandle && !docHandle.doc.isDestroyed) {
+				const content = docHandle.text.toString();
+				if (this.lastWrittenContent.get(path) !== content) {
+					const diskPath = toLocalPath(path);
+					this.fileOpsManager.mutePathEvents(diskPath);
+					try {
+						const file = getFileByPath(this.vault, diskPath);
+						if (file) {
+							// Synchronous-style write via adapter (fire-and-forget on destroy)
+							void this.vault.adapter.write(diskPath, content);
+						}
+					} finally {
+						setTimeout(
+							() =>
+								this.fileOpsManager.unmutePathEvents(diskPath),
+							VAULT_EVENT_SETTLE_MS,
+						);
+					}
+				}
+			}
 		}
 		this.writeTimers.clear();
 		for (const [, unobserve] of this.observers) {

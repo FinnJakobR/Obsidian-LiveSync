@@ -17,6 +17,7 @@ import {
 	decodeMuxMessage,
 	encodeMuxMessage,
 	MUX_DELETE,
+	MUX_SUBSCRIBE,
 	MUX_SUBSCRIBED,
 	MUX_SYNC,
 	MUX_SYNC_ENCRYPTED,
@@ -438,7 +439,7 @@ export class SyncManager {
 	}
 
 	private sendSubscribe(filePath: string): void {
-		this.sendMux(filePath, MUX_SUBSCRIBED);
+		this.sendMux(filePath, MUX_SUBSCRIBE);
 	}
 
 	private sendUnsubscribe(filePath: string): void {

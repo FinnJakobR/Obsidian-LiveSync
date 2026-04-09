@@ -5,6 +5,7 @@ import {
 	decodeMuxMessage,
 	encodeMuxMessage,
 	MUX_DELETE,
+	MUX_SUBSCRIBE,
 	MUX_SUBSCRIBED,
 	MUX_SYNC,
 	MUX_SYNC_ENCRYPTED,
@@ -223,9 +224,12 @@ export function createYjsWSS() {
 			//db.storeUpdate(roomId, Y.encodeStateAsUpdate(state.doc));
 
 			const msgPeerType = encrypted ? MUX_SYNC_ENCRYPTED : MUX_SYNC;
+
 			const msg = encodeMuxMessage(docId, msgPeerType, payload);
+
 			for (const peer of state.clients) {
-				if (peer !== client) safeSend(peer.ws, msg);
+				if (peer !== client && msgType == SYNC_UPDATE)
+					safeSend(peer.ws, msg);
 			}
 
 			if (encoding.length(encoder) > 0) {
@@ -301,9 +305,10 @@ export function createYjsWSS() {
 				const data = toUint8Array(raw);
 				try {
 					const { docId, msgType, payload } = decodeMuxMessage(data);
+					//console.log(docId, msgType, payload);
 
 					switch (msgType) {
-						case MUX_SUBSCRIBED:
+						case MUX_SUBSCRIBE:
 							handleSubscribe(client, docId);
 							break;
 
@@ -323,6 +328,7 @@ export function createYjsWSS() {
 							break;
 					}
 				} catch (err) {
+					console.log(raw);
 					logger.log({
 						level: LogLevel.ERROR,
 						message: `Client ${userId} failed to handle message: ${err as string}`,

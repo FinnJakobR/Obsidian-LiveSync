@@ -28,6 +28,7 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 			//trigger das nur wenn es nicht von dir kam!
 			if (plugin.fileOpsManager.isPathMuted(originalPath)) return;
+			if (renamePaths.has(originalPath)) return;
 
 			void plugin.fileOpsManager.onFileCreate(file);
 
