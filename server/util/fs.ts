@@ -6,12 +6,14 @@ import {
 	lstatSync,
 	mkdirSync,
 	readdirSync,
+	readFileSync,
 	renameSync,
 	writeFileSync,
 	WriteStream,
 } from "fs";
 import path, { basename, join, sep } from "path";
 import { exitWithReason } from "./util";
+import { func } from "lib0";
 
 const BASE_PATH =
 	process.env.BACKUP_BASE_PATH ||
@@ -203,12 +205,20 @@ export function createFileFromEvent(
 				encoding: "utf-8",
 			});
 		} else {
-			writeFileSync(path.join(currentPath, fileName), content, {});
+			const buffer = Buffer.from(content, "base64");
+			writeFileSync(path.join(currentPath, fileName), buffer);
 		}
 	} else {
 		if (!existsSync(path.join(currentPath, fileName)))
 			mkdirSync(path.join(currentPath, fileName));
 	}
+}
+
+export function getFileFromEvent(path: string, room_id: string) {
+	const p = join(BASE_PATH, room_id, path);
+
+	if (!existsSync(p)) return "";
+	return readFileSync(p, { encoding: "base64" });
 }
 
 export function renameFileFromEvent(op: FileRenameOperation, id: string): void {

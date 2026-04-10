@@ -14,10 +14,12 @@ import {
 	FileModifyOperation,
 	FileRenameOperation,
 	FolderCreateOperation,
+	getFileFromEvent,
 	modifyFileFromEvent,
 	renameFileFromEvent,
 	startChunkWritingFromEvent,
 } from "../util/fs";
+import { binary } from "lib0";
 
 const ALLOWED_TYPES = new Set([
 	"file-op",
@@ -76,93 +78,6 @@ export function createControlWSS() {
 
 	function sendTo(ws: WebSocket, message: Record<string, unknown>) {
 		safeSend(ws, JSON.stringify(message));
-	}
-
-	const uploads = new Map();
-
-	function createQueue() {
-		let last = Promise.resolve();
-
-		return (task: () => Promise<void>): Promise<void> => {
-			last = last.then(task).catch(console.error);
-			return last;
-		};
-	}
-
-	/**
-	 * START
-	 */
-	function handleChunkStart({
-		transferId,
-		path,
-		size,
-	}: {
-		transferId: string;
-		path: string;
-		size: number;
-	}) {
-		return new Promise<void>((resolve, reject) => {
-			fs.open(path, "w+", (err, fd) => {
-				if (err) return reject(err);
-
-				const queue = createQueue();
-
-				// Datei optional auf Zielgröße setzen
-				if (size) {
-					fs.write(fd, Buffer.alloc(1), 0, 1, size - 1, (err) => {
-						if (err) return reject(err);
-						uploads.set(transferId, { fd, path, queue });
-						resolve();
-					});
-				} else {
-					uploads.set(transferId, { fd, path, queue });
-					resolve();
-				}
-			});
-		});
-	}
-
-	function handleChunkData({
-		transferId,
-		data,
-		start,
-	}: {
-		transferId: string;
-		data: string;
-		start: number;
-	}) {
-		const upload = uploads.get(transferId);
-		if (!upload) return Promise.reject(new Error("Upload nicht gefunden"));
-
-		const buffer = Buffer.from(data, "base64");
-
-		return upload.queue(() => {
-			return new Promise<void>((resolve, reject) => {
-				fs.write(upload.fd, buffer, 0, buffer.length, start, (err) => {
-					if (err) return reject(err);
-					resolve();
-				});
-			});
-		});
-	}
-
-	/**
-	 * END
-	 */
-	function handleChunkEnd({ transferId }: { transferId: string }) {
-		const upload = uploads.get(transferId);
-		if (!upload) return Promise.resolve();
-
-		return upload.queue(() => {
-			return new Promise<void>((resolve, reject) => {
-				fs.close(upload.fd, (err) => {
-					if (err) return reject(err);
-					uploads.delete(transferId);
-					console.log("Upload fertig:", upload.path);
-					resolve();
-				});
-			});
-		});
 	}
 
 	function broadcast(
@@ -344,8 +259,26 @@ export function createControlWSS() {
 					}
 				}
 
-				//console.log(msg);
-				broadcast(room, data, ws);
+				//sync-request wird nur verwendet wenn man ein binary will! wir senden einfach ein Create Event an den user mit den Daten
+
+				if (msg.type == "sync-request") {
+					const path = msg.path as string;
+					const content = getFileFromEvent(path, roomId);
+
+					if (content.length > 0) {
+						sendTo(ws, {
+							type: "file-op",
+							op: {
+								type: "create",
+								path: path,
+								content: content,
+								binary: true,
+							},
+						});
+					}
+				} else {
+					broadcast(room, data, ws);
+				}
 			});
 		},
 	);
