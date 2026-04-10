@@ -102,8 +102,6 @@ export class SyncManager {
 		const filePath = normalizePath(rawPath);
 		const existingDoc = this.docs.get(filePath);
 
-		console.log("get Doc", rawPath);
-
 		if (existingDoc) {
 			return {
 				doc: existingDoc,
@@ -125,13 +123,6 @@ export class SyncManager {
 				filePath,
 				MUX_SYNC,
 				encoding.toUint8Array(syncEncoder),
-			);
-
-			console.log(
-				"UPDATE",
-				update.length,
-				doc.getText("content").toDelta(),
-				origin,
 			);
 		};
 
@@ -266,7 +257,6 @@ export class SyncManager {
 		if (this.reconnectTimer) return;
 
 		if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-			console.log("HÄ");
 			this.shouldConnect = false;
 			return;
 		}
@@ -287,8 +277,6 @@ export class SyncManager {
 
 	private handleMessage(data: Uint8Array): void {
 		const { docId, msgType, payload } = decodeMuxMessage(data);
-
-		console.log("GOT MESSAGE!", msgType);
 
 		switch (msgType) {
 			case MUX_SUBSCRIBED:
@@ -316,8 +304,6 @@ export class SyncManager {
 		const syncEncoder = encoding.createEncoder();
 		syncProtocol.writeSyncStep1(syncEncoder, doc);
 
-		console.log("SUBSCRIBE", docId);
-
 		this.sendMux(docId, MUX_SYNC, encoding.toUint8Array(syncEncoder));
 
 		let peerCount = 0;
@@ -339,7 +325,6 @@ export class SyncManager {
 
 	private handleSync(docId: string, payload: Uint8Array): void {
 		const doc = this.docs.get(docId);
-		console.log("DOC before", doc?.toJSON(), docId);
 		if (!doc) return;
 
 		const decoder = decoding.createDecoder(payload);
@@ -349,6 +334,9 @@ export class SyncManager {
 		syncProtocol.readSyncMessage(decoder, syncEncoder, doc, this);
 
 		if (msgType === SYNC_STEP2 || msgType == SYNC_UPDATE) {
+			if (docId == "__manifest__")
+				console.warn(doc.getMap("files").toJSON());
+
 			this.setSynced(docId, true);
 			return;
 		}
@@ -399,7 +387,6 @@ export class SyncManager {
 	): void {
 		if (!this.e2e?.enabled || !payload || payload.length === 0) {
 			if (this.ws?.readyState === WebSocket.OPEN) {
-				console.log("SEND_MUX");
 				this.ws.send(encodeMuxMessage(docId, msgType, payload));
 			}
 			return;

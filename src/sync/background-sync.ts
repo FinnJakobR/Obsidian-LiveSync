@@ -74,7 +74,6 @@ export class BackgroundSync {
 
 		try {
 			const docHandle = this.syncManager.getDoc(path);
-			console.log("CALL GET DOC FROM SUBSCRIBE!");
 			if (!docHandle) return;
 
 			try {
@@ -141,7 +140,6 @@ export class BackgroundSync {
 
 		if (oldActive && oldActive !== path) {
 			const docHandle = this.syncManager.getDoc(oldActive);
-			console.log("CALL GET DOC FROM setActiveFile!");
 
 			if (docHandle) {
 				const content = docHandle.text.toString();
@@ -202,7 +200,6 @@ export class BackgroundSync {
 		if (!isTextFile(normNew)) return;
 
 		const docHandle = this.syncManager.getDoc(normNew);
-		console.log("CALL GET DOC FROM onFileRename!");
 
 		if (!docHandle) return;
 
@@ -256,7 +253,6 @@ export class BackgroundSync {
 		//if (path === this.activeFile) return;
 
 		const docHandle = this.syncManager.getDoc(path);
-		console.log("CALL GET DOC FROM HANDLE Local Text Modify");
 		if (!docHandle) return;
 
 		const file = getFileByPath(this.vault, toLocalPath(path));
@@ -331,7 +327,6 @@ export class BackgroundSync {
 		clearTimeout(timer);
 		this.writeTimers.delete(path);
 		const docHandle = this.syncManager.getDoc(path);
-		console.log("Call from flush write!");
 
 		if (docHandle) {
 			void this.writeToDisk(path, docHandle.doc.toString());

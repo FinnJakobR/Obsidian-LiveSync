@@ -309,7 +309,6 @@ export default class LiveSync extends Plugin {
 
 		const manifestPaths = new Set(manifest.keys());
 		const localFiles = this.app.vault.getFiles();
-		console.log(manifestPaths, localFiles);
 		for (const file of localFiles) {
 			if (!manifestPaths.has(toCanonicalPath(normalizePath(file.path)))) {
 				this.fileOpsManager.mutePathEvents(file.path);
@@ -346,11 +345,11 @@ export default class LiveSync extends Plugin {
 
 	public async join() {
 		await this.connectSync();
+		this.registerManifestChangeHandler();
+
 		const successfulConnected = await this.manifestManager.connect(
 			this.syncManager,
 		);
-
-		console.log(this.manifestManager.getEntries());
 
 		if (successfulConnected) await this.cleanupStaleFiles();
 
@@ -361,7 +360,6 @@ export default class LiveSync extends Plugin {
 		);
 
 		await this.backgroundSync.startAll();
-		this.registerManifestChangeHandler();
 		this.onActiveFileChange();
 	}
 

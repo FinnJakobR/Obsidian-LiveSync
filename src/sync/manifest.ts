@@ -53,10 +53,9 @@ export class ManifestManager {
 
 		this.manifest = this.docHandle.doc.getMap("files");
 
-		console.log("Manifest", this.manifest.toJSON());
-
 		try {
 			await syncManager.waitForSync("__manifest__");
+			console.warn(this.manifest.toJSON());
 		} catch (e) {
 			console.error(e);
 			return 0;
@@ -162,6 +161,13 @@ export class ManifestManager {
 
 			let needsSync = false;
 			if (!localFile) {
+				if (path.includes("Tagebuch"))
+					console.warn(
+						"needsSync!",
+						{ x: diskPath },
+						{ x: path },
+						entry,
+					);
 				needsSync = true;
 			} else if (entry.binary) {
 				const binaryContent = await this.vault.readBinary(localFile);
@@ -179,15 +185,15 @@ export class ManifestManager {
 
 			if (!needsSync) continue;
 
-			if (entry.binary) {
+			const tempHandle = this.syncManager.getDoc(path);
+			if (!tempHandle) continue;
+
+			if (entry.binary && !isTextFile(path)) {
+				console.warn("request Binary", path);
 				requestBinary?.(path);
 				synced++;
 				continue;
 			}
-
-			const tempHandle = this.syncManager.getDoc(path);
-			console.log("get Doc from Manifest!");
-			if (!tempHandle) continue;
 
 			try {
 				await this.syncManager.waitForSync(path);

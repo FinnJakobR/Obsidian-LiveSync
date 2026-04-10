@@ -369,7 +369,6 @@ export default class FileOpsManager {
 			switch (op.type) {
 				case "create": {
 					const exists = this.vault.getAbstractFileByPath(op.path);
-					console.log("exists", exists);
 					if (exists && exists instanceof TFile) {
 						if (op.binary) {
 							const binaryContent = base64ToArrayBuffer(

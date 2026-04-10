@@ -24,8 +24,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 		plugin.app.vault.on("create", (file: TAbstractFile) => {
 			const originalPath = file.path;
 
-			console.log("CREATE!", file);
-
 			//trigger das nur wenn es nicht von dir kam!
 			if (plugin.fileOpsManager.isPathMuted(originalPath)) return;
 			if (renamePaths.has(originalPath)) return;
@@ -81,8 +79,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 		plugin.app.vault.on(
 			"rename",
 			(file: TAbstractFile, oldPath: string) => {
-				console.log("RENAME");
-
 				if (
 					plugin.fileOpsManager.isPathMuted(file.path) ||
 					plugin.fileOpsManager.isPathMuted(oldPath)
@@ -124,7 +120,6 @@ export function registerVaultEvents(plugin: LiveSync): void {
 
 	plugin.registerEvent(
 		plugin.app.vault.on("modify", (file: TAbstractFile) => {
-			console.log("MODIFY");
 			if (!(file instanceof TFile)) return;
 
 			if (plugin.fileOpsManager.isPathMuted(file.path)) return;
