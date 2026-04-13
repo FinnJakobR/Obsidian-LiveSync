@@ -8,6 +8,7 @@ import {
 	readdirSync,
 	readFileSync,
 	renameSync,
+	statSync,
 	writeFileSync,
 	WriteStream,
 } from "fs";
@@ -233,7 +234,17 @@ export function renameFileFromEvent(op: FileRenameOperation, id: string): void {
 		mkdirSync(targetDir, { recursive: true });
 	}
 
-	renameSync(oldPath, newPath);
+	try {
+		if (lstatSync(oldPath).isDirectory()) {
+			renameFilesRecursive(oldPath, oldPath, newPath);
+		} else {
+			renameSync(oldPath, newPath);
+		}
+	} catch {
+		return;
+	}
+
+	return;
 }
 
 export function deleteFileFromEvent(op: FileDeleteOperation, id: string): void {
@@ -257,4 +268,19 @@ export function modifyFileFromEvent(op: FileModifyOperation, id: string): void {
 	};
 
 	createFileFromEvent(newOp, id, false);
+}
+
+export function renameFilesRecursive(dir: string, from: string, to: string) {
+	readdirSync(dir).forEach((it) => {
+		const itsPath = path.resolve(dir, it);
+		const itsStat = statSync(itsPath);
+
+		if (itsPath.search(from) > -1) {
+			renameSync(itsPath, itsPath.replace(from, to));
+		}
+
+		if (itsStat.isDirectory()) {
+			renameFilesRecursive(itsPath.replace(from, to), from, to);
+		}
+	});
 }

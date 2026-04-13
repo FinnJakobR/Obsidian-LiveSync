@@ -137,6 +137,8 @@ export class ManifestManager {
 		let synced = 0;
 		const entries = Array.from(this.manifest.entries());
 
+		new Notice("Start Syncing: " + entries.length + " File(s)");
+
 		for (const [path, entry] of entries) {
 			if (!path || path.startsWith("/") || path.startsWith("\\"))
 				continue;
@@ -161,16 +163,10 @@ export class ManifestManager {
 
 			let needsSync = false;
 			if (!localFile) {
-				if (path.includes("Tagebuch"))
-					console.warn(
-						"needsSync!",
-						{ x: diskPath },
-						{ x: path },
-						entry,
-					);
 				needsSync = true;
-			} else if (entry.binary) {
+			} else if (entry.binary && !isTextFile(diskPath)) {
 				const binaryContent = await this.vault.readBinary(localFile);
+
 				if ((await hashBuffer(binaryContent)) !== entry.hash) {
 					needsSync = true;
 				}
@@ -178,6 +174,7 @@ export class ManifestManager {
 				const content = normalizeLineEndings(
 					await this.vault.read(localFile),
 				);
+
 				if ((await hashContent(content)) !== entry.hash) {
 					needsSync = true;
 				}
@@ -189,7 +186,6 @@ export class ManifestManager {
 			if (!tempHandle) continue;
 
 			if (entry.binary && !isTextFile(path)) {
-				console.warn("request Binary", path);
 				requestBinary?.(path);
 				synced++;
 				continue;
@@ -226,6 +222,8 @@ export class ManifestManager {
 				// Failed to sync individual file, continue with rest
 			}
 		}
+
+		new Notice("Successfull Synced: " + entries.length + " File(s)");
 
 		return synced;
 	}
