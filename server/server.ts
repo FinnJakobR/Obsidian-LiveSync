@@ -1,27 +1,29 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { string } from "lib0";
 import { exitWithReason, getRoomIds, safeTokenCompare } from "./util/util";
-import { error } from "node:console";
 import { createYjsWSS, initRooms } from "./ws/handler";
 import { createServer } from "node:http";
 import { createControlWSS } from "./ws/control-handler";
 import { createRoom, roomExists } from "./util/fs";
-import { exit } from "node:process";
+import { LearningAI } from "./fsrs/fsrs";
+import Logger from "./util/logger";
 
 const SERVER_PASSWORD = process.env.SERVER_PASSWORD || "";
 const ROOM_JSON =
 	process.env.ROOMS || exitWithReason("Could not found a Room id in .env");
 
+const LEARNING_DB_PATH =
+	process.env.LEARNING_DB_PATH ||
+	exitWithReason("Could not found a Learning Path in .env");
+
 export async function createApp() {
 	const corsOrigin = process.env.CORS_ORIGIN || "*";
 	const app = express();
 	const server = createServer(app);
+	const learningAI = new LearningAI(LEARNING_DB_PATH, new Logger());
 
 	const ids = getRoomIds(ROOM_JSON);
-
-	console.log(ids);
 
 	for (const room_id of ids) {
 		if (!roomExists(room_id)) {
@@ -35,7 +37,7 @@ export async function createApp() {
 
 	const limiter = rateLimit({
 		windowMs: 60 * 1000,
-		max: 30,
+		max: 200,
 		standardHeaders: true,
 	});
 
@@ -56,6 +58,44 @@ export async function createApp() {
 			next();
 		});
 	}
+
+	//bekommt die Flashcards die Heute dran sind!
+	app.get("/learn/daily", async (req, res, next) => {
+		const cards = await learningAI.getDailyCards();
+		res.status(200).json(cards);
+	});
+
+	//scheudled neue Flashcards
+	app.get("/learn/:id/scheudle/:g", async (req, res, next) => {
+		const id = req.params.id;
+		const g = req.params.g;
+		const error = await learningAI.scheudleCard(id, Number(g));
+
+		if (error == 0) {
+			res.status(202).send("Sucess");
+		} else {
+			res.status(400).send("Failed");
+		}
+	});
+
+	app.use("/learn/newCard", express.json());
+
+	app.post("/learn/newCard", async (req, res, next) => {
+		const body = req.body as Record<string, string>;
+
+		if (!body["topic"] || !body["question"] || !body["answer"]) {
+			res.status(400).send();
+			return;
+		}
+
+		await learningAI.addNewCard(
+			body["topic"],
+			body["question"],
+			body["answer"],
+		);
+
+		res.status(202).send();
+	});
 
 	const yjs = createYjsWSS();
 	const control = createControlWSS();

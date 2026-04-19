@@ -17,6 +17,7 @@ export interface Log {
 	message: string;
 	level: LogLevel;
 	causing:
+		| "scheudle"
 		| "create"
 		| "rename"
 		| "delete"
